@@ -1,0 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f3f4f6;
+}
+
+/* Cores da sua marca */
+.bg-brand-primary { background-color: #ba7d88; }
+.hover\:bg-brand-hover:hover { background-color: #65081e; }
+.text-brand-primary { color: lch(20.18% 42.12 19.82); }
+.focus\:ring-brand-primary:focus { --tw-ring-color: #ba7d88; }
+
+/* Cores para o modo escuro */
+.dark .text-brand-light { color: #ba7d88; }
+.dark .bg-brand-light { background-color: #ba7d88; }
+.dark .hover\:bg-brand-primary:hover { background-color: #65081e; }
+.dark .focus\:ring-brand-light:focus { --tw-ring-color: #ba7d88; }
