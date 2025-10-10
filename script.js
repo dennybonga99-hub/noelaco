@@ -14,12 +14,12 @@ let cart = JSON.parse(localStorage.getItem('cart')) || [];
 let currentLanguage = localStorage.getItem('language') || 'pt-br';
 let isDarkMode = localStorage.getItem('darkMode') === 'true';
 
-// NOVO: Rastreamento do histórico de telas
+// Rastreamento do histórico de telas para navegação com o botão Voltar
 let screenHistory = [];
 const homeScreenId = 'home-screen'; // Tela inicial padrão
 
-// ** ATENÇÃO: Mude este número para o seu WhatsApp do Admin/Loja (código do país + número) **
-const ADMIN_WHATSAPP_NUMBER = "258841234567"; // Exemplo: 258 84 123 4567
+// ** ATENÇÃO: Mude este número para o seu WhatsApp do Admin/Loja (apenas números, ex: 258841234567) **
+const ADMIN_WHATSAPP_NUMBER = "258841234567"; 
 
 // Elementos do DOM
 const loginSection = document.getElementById('login-section');
@@ -48,7 +48,7 @@ const sendOrderWhatsappButton = document.getElementById('send-order-whatsapp-but
 // Elementos de Login/Foto
 const profilePictureInput = document.getElementById('profile-picture');
 const profilePictureText = document.getElementById('profile-picture-text');
-const profilePictureUploadArea = document.querySelector('.cursor-pointer'); 
+const profilePictureUploadArea = profilePictureInput.closest('.cursor-pointer'); 
 const profilePreview = document.getElementById('profile-preview'); 
 const profilePreviewContainer = document.getElementById('profile-preview-container'); 
 
@@ -56,7 +56,7 @@ const profilePreviewContainer = document.getElementById('profile-preview-contain
 const logoutButton = document.getElementById('logout-button');
 const backButton = document.getElementById('back-button'); 
 
-// Traduções
+// Traduções (Mantidas)
 const translations = {
     'pt-br': {
         'welcome': 'Bem-vindo(a)',
@@ -118,32 +118,35 @@ const translations = {
 
 // --- Funções Principais de Navegação e UI ---
 
+// ALTERADO: Adicionado gerenciamento de classes para a animação de fade-in/out
 function showScreen(screenId, isBack = false) {
     const screens = [homeScreen, productsScreen, settingsScreen];
     
-    // 1. Oculta todas as telas
-    screens.forEach(screen => screen.classList.add('hidden'));
+    // 1. Oculta todas as telas com transição
+    screens.forEach(screen => {
+        screen.classList.remove('screen-visible');
+        screen.classList.add('hidden');
+    });
     
-    // 2. Mostra a tela desejada
+    // 2. Mostra a tela desejada com animação
     const targetScreen = document.getElementById(screenId);
     if (targetScreen) {
         targetScreen.classList.remove('hidden');
+        // Pequeno delay para a transição 'hidden' ser processada antes do fade-in
+        setTimeout(() => {
+            targetScreen.classList.add('screen-visible');
+        }, 10); 
     }
 
     // 3. Gerencia o histórico de navegação
     if (!isBack) {
-        // Evita adicionar a mesma tela repetidamente
         if (screenHistory.length === 0 || screenHistory[screenHistory.length - 1] !== screenId) {
             screenHistory.push(screenId);
         }
-    } else {
-        // Se for um "voltar", remove a tela atual do histórico
-        screenHistory.pop();
-    }
+    } 
     
     // 4. Mostra/Oculta o botão de voltar
-    // O botão só aparece se houver mais de uma tela no histórico E se a tela atual não for a Home
-    if (screenHistory.length > 1 && screenHistory[screenHistory.length - 1] !== homeScreenId) {
+    if (screenHistory.length > 1) {
         backButton.classList.remove('hidden');
     } else {
         backButton.classList.add('hidden');
@@ -152,10 +155,12 @@ function showScreen(screenId, isBack = false) {
 
 function goBack() {
     if (screenHistory.length > 1) {
-        // Usa a lógica de pop e repush da tela anterior
+        // Remove a tela atual do histórico
         screenHistory.pop();
+        // Pega o ID da tela anterior
         const prevScreenId = screenHistory[screenHistory.length - 1];
-        showScreen(prevScreenId, true);
+        // Exibe a tela anterior com flag de Voltar
+        showScreen(prevScreenId, true); 
     }
 }
 
@@ -177,24 +182,23 @@ function applyTranslations() {
     const lang = translations[currentLanguage];
     
     // Login Screen
+    document.querySelector('h1.text-4xl').textContent = lang.welcome;
     document.querySelector('label[for="full-name"]').textContent = lang.full_name;
     document.querySelector('label[for="phone-number"]').textContent = lang.phone_number;
-    document.querySelector('label[for="profile-picture"]').textContent = lang.profile_picture;
+    document.querySelector('label[for="profile-picture-upload"]').textContent = lang.profile_picture;
     
-    // Atualiza o texto do upload e lida com o estado da pré-visualização
     const file = profilePictureInput.files[0];
     if (file) {
         profilePictureText.textContent = file.name;
-        previewProfilePicture(file);
     } else {
         profilePictureText.textContent = lang.upload_photo;
-        previewProfilePicture(null);
     }
     
-    // Main App (traduções de texto, mantidas do código anterior)
+    // Main App
     document.querySelector('#home-screen h2').textContent = lang.highlighted_products;
+    document.querySelector('#home-screen p.mt-2.text-lg').textContent = lang.highlighted_products_desc;
     document.querySelector('#home-screen h3').textContent = lang.start_now;
-    const homeDesc = document.querySelector('#home-screen p.text-gray-600');
+    const homeDesc = document.querySelector('#home-screen p.mt-2.text-gray-600');
     if (homeDesc) homeDesc.textContent = lang.discover_products;
     
     document.getElementById('view-products-btn').textContent = lang.view_products;
@@ -221,6 +225,8 @@ function applyTranslations() {
     
     if (cart.length === 0) {
         cartItemsContainer.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400">${lang.empty_cart}</p>`;
+    } else {
+        updateCart(false); 
     }
 }
 
@@ -236,18 +242,21 @@ function applyTheme() {
 
 function renderProducts() {
     productGrid.innerHTML = '';
+    const lang = translations[currentLanguage];
+    
     products.forEach(product => {
         const productCard = document.createElement('div');
-        productCard.className = 'bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden transform transition-transform duration-300 hover:scale-105';
+        // ESTILO MELHORADO: shadow-xl, hover:shadow-2xl, scale-100/105
+        productCard.className = 'bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden transition-all duration-300 transform hover:scale-[1.03] hover:shadow-2xl';
         productCard.innerHTML = `
-            <img class="w-full h-48 object-cover" src="${product.imageUrl}" alt="${product.name}">
+            <img class="w-full h-48 object-cover transition-transform duration-300 hover:scale-110" src="${product.imageUrl}" alt="${product.name}">
             <div class="p-4">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">${product.name}</h3>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">${product.name}</h3>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">${product.description}</p>
                 <div class="mt-4 flex items-center justify-between">
-                    <span class="text-xl font-bold text-brand-primary dark:text-brand-light">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
-                    <button data-id="${product.id}" class="add-to-cart-btn bg-brand-primary text-white text-sm font-semibold py-2 px-4 rounded-full hover:bg-brand-hover dark:bg-brand-light dark:hover:bg-brand-primary transition-colors duration-200">
-                        ${translations[currentLanguage].add_to_cart}
+                    <span class="text-2xl font-extrabold text-brand-primary dark:text-brand-light">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
+                    <button data-id="${product.id}" class="add-to-cart-btn bg-brand-primary text-white text-sm font-semibold py-2 px-4 rounded-full shadow-md hover:bg-brand-hover dark:bg-brand-light dark:hover:bg-brand-primary transition-colors duration-300 transform hover:scale-105">
+                        ${lang.add_to_cart}
                     </button>
                 </div>
             </div>
@@ -256,23 +265,25 @@ function renderProducts() {
     });
 }
 
-function updateCart() {
+function updateCart(saveToStorage = true) { 
     cartItemsContainer.innerHTML = '';
     let total = 0;
     let totalItems = 0;
+    const lang = translations[currentLanguage];
 
     if (cart.length === 0) {
-        cartItemsContainer.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400">${translations[currentLanguage].empty_cart}</p>`;
+        cartItemsContainer.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 py-6">${lang.empty_cart}</p>`;
     } else {
         cart.forEach(item => {
             total += item.price * item.quantity;
             totalItems += item.quantity;
             const cartItem = document.createElement('div');
-            cartItem.className = 'flex items-center justify-between py-2 border-b last:border-b-0 dark:border-gray-700';
+            // ESTILO MELHORADO: Efeito hover no item do carrinho
+            cartItem.className = 'flex items-center justify-between py-3 px-2 border-b last:border-b-0 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200 rounded-lg';
             cartItem.innerHTML = `
                 <div>
                     <p class="text-brand-primary dark:text-brand-light font-semibold">${item.name}</p>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm">${translations[currentLanguage].quantity} ${item.quantity} x R$ ${item.price.toFixed(2).replace('.', ',')}</p>
+                    <p class="text-gray-600 dark:text-gray-400 text-sm">${lang.quantity} ${item.quantity} x R$ ${item.price.toFixed(2).replace('.', ',')}</p>
                 </div>
                 <span class="font-bold text-brand-primary dark:text-brand-light">R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}</span>
             `;
@@ -281,13 +292,16 @@ function updateCart() {
     }
     cartTotalSpan.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
     cartItemCountSpan.textContent = totalItems;
-    localStorage.setItem('cart', JSON.stringify(cart));
+    
+    if (saveToStorage) {
+        localStorage.setItem('cart', JSON.stringify(cart));
+    }
 }
 
 function sendOrderToWhatsApp() {
     if (cart.length === 0) return;
 
-    const userName = localStorage.getItem('userName') || 'Cliente Novo';
+    const userName = localStorage.getItem('userName') || 'Cliente Não Registrado';
     const userPhone = localStorage.getItem('userPhone') || 'Não Informado';
     const userPhotoLink = localStorage.getItem('userPhotoURL') || 'Nenhuma';
     let total = 0;
@@ -312,19 +326,73 @@ function sendOrderToWhatsApp() {
 
     window.open(whatsappLink, '_blank');
 
+    // Limpa o carrinho após o envio
     cart = [];
     updateCart();
-    cartModal.classList.add('hidden');
-    orderConfirmModal.classList.add('hidden');
+    // Adiciona a animação de saída antes de ocultar
+    hideModalWithAnimation(cartModal); 
+    hideModalWithAnimation(orderConfirmModal);
     
-    notificationMessage.classList.remove('hidden');
+    // Mostra notificação de sucesso
+    showNotification();
+}
+
+// NOVO: Função para mostrar notificação com animação
+function showNotification() {
+    notificationMessage.classList.remove('hidden', 'translate-x-full', 'opacity-0');
+    notificationMessage.classList.add('translate-x-0', 'opacity-100');
+    
     setTimeout(() => {
-        notificationMessage.classList.add('hidden');
+        notificationMessage.classList.remove('translate-x-0', 'opacity-100');
+        notificationMessage.classList.add('translate-x-full', 'opacity-0');
+        // Oculta completamente após a animação
+        setTimeout(() => {
+             notificationMessage.classList.add('hidden');
+        }, 300);
     }, 3000);
 }
 
+// NOVO: Função para gerenciar a animação de saída dos modais
+function hideModalWithAnimation(modalElement) {
+    const content = modalElement.querySelector('div:last-child'); // Conteúdo interno do modal
+    
+    // Animação de saída específica para cada modal
+    if (modalElement.id === 'cart-modal') {
+        content.classList.remove('translate-x-0', 'scale-100');
+        content.classList.add('translate-x-full', 'scale-95');
+    } else if (modalElement.id === 'order-confirm-modal') {
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+    }
+    
+    modalElement.classList.remove('opacity-100');
+    modalElement.classList.add('opacity-0');
+    
+    // Oculta o modal completamente após a transição
+    setTimeout(() => {
+        modalElement.classList.add('hidden');
+    }, 300); 
+}
+
+// NOVO: Função para gerenciar a animação de entrada dos modais
+function showModalWithAnimation(modalElement) {
+    const content = modalElement.querySelector('div:last-child'); 
+    
+    modalElement.classList.remove('hidden', 'opacity-0');
+    modalElement.classList.add('opacity-100');
+    
+    // Animação de entrada específica para cada modal
+    if (modalElement.id === 'cart-modal') {
+        content.classList.remove('translate-x-full', 'scale-95');
+        content.classList.add('translate-x-0', 'scale-100');
+    } else if (modalElement.id === 'order-confirm-modal') {
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+    }
+}
+
 function logoutUser() {
-    // 1. Limpa todas as informações de login do usuário no LocalStorage
+    // 1. Limpa todas as informações de login do usuário
     localStorage.removeItem('isRegistered');
     localStorage.removeItem('userName');
     localStorage.removeItem('userPhone');
@@ -335,98 +403,80 @@ function logoutUser() {
     previewProfilePicture(null); 
     profilePictureText.textContent = translations[currentLanguage].upload_photo;
     
-    // 3. Reseta o histórico e muda para a tela de Login
+    // 3. Reseta o histórico e muda para a tela de Login com transição suave
     screenHistory = [];
     mainAppSection.classList.add('hidden');
     loginSection.classList.remove('hidden');
+    loginSection.classList.add('animate-fadeIn');
 }
 
 
 // --- Event Listeners ---
 
-// Listener para a área de clique do upload de foto
-if (profilePictureUploadArea) {
-    profilePictureUploadArea.addEventListener('click', () => {
-        profilePictureInput.click();
-    });
-}
+// Listeners de Login/Registro e Navegação mantidos...
 
-// Listener para pré-visualização de foto (atualiza texto e imagem)
 profilePictureInput.addEventListener('change', () => {
+    const file = profilePictureInput.files[0];
+    previewProfilePicture(file);
     applyTranslations();
 });
 
-
-// Listener PRINCIPAL de Login/Registro com Firebase Storage e Firestore
 registrationForm.addEventListener('submit', async (e) => {
-    e.preventDefault(); // Impede o recarregamento padrão
-    
-    console.log("Tentativa de registro iniciada...");
+    e.preventDefault(); 
     
     const fullName = document.getElementById('full-name').value;
     const phoneNumber = document.getElementById('phone-number').value;
     const profilePictureFile = document.getElementById('profile-picture').files[0];
     let photoURL = null; 
 
-    // Verifica se as variáveis do Firebase estão acessíveis
     if (typeof storage === 'undefined' || typeof db === 'undefined') {
-        console.error("ERRO: As variáveis 'storage' e/ou 'db' do Firebase não estão definidas. Verifique o bloco <script> no HTML.");
-        alert("Erro de inicialização do Firebase. Verifique o console.");
+        console.error("ERRO: Firebase não inicializado.");
+        alert("Erro de inicialização do Firebase.");
         return; 
     }
 
-    // 1. Faz o upload da foto, SE ela existir
     if (profilePictureFile) {
-        console.log("Tentando fazer upload da foto...");
         try {
             const storageRef = storage.ref(`fotos_perfil/${Date.now()}_${profilePictureFile.name}`);
             const snapshot = await storageRef.put(profilePictureFile);
             photoURL = await snapshot.ref.getDownloadURL();
-            console.log("Foto de perfil carregada com sucesso:", photoURL);
-            
         } catch (error) {
-            // Se o upload falhar (ex: regras do Storage), avisa e continua sem foto
-            console.error("Erro CRÍTICO ao fazer upload da foto. Continuando sem foto:", error);
-            alert("Erro ao carregar a foto de perfil. Você será registrado sem foto. Verifique o console para mais detalhes.");
+            console.error("Erro ao fazer upload da foto:", error);
+            alert("Erro ao carregar a foto de perfil. Você será registrado sem foto.");
             photoURL = null; 
         }
     }
 
-    // 2. Salva os dados do usuário no Firestore (Banco de Dados)
     try {
-        const userRef = db.collection('clientes').doc(phoneNumber.replace(/ /g, ''));
+        // CORREÇÃO: Limpa o telefone para o ID do Firestore
+        const sanitizedPhoneNumber = phoneNumber.replace(/[^0-9]/g, ''); 
+        const userRef = db.collection('clientes').doc(sanitizedPhoneNumber);
         
         await userRef.set({
             nome: fullName,
-            telefone: phoneNumber,
+            telefone: phoneNumber, 
             fotoURL: photoURL,
             dataRegistro: firebase.firestore.FieldValue.serverTimestamp()
         });
-        console.log("Dados do cliente salvos no Firestore.");
-
     } catch (error) {
-        // Se o salvamento no Firestore falhar, para o login
-        console.error("Erro CRÍTICO ao salvar dados do cliente no Firestore:", error);
+        console.error("Erro ao salvar dados do cliente no Firestore:", error);
         alert("Erro ao salvar dados no banco de dados. Tente novamente.");
         return; 
     }
 
-    // 3. Continua o fluxo normal do app (Salva no LocalStorage e muda de tela)
     localStorage.setItem('isRegistered', 'true');
     localStorage.setItem('userName', fullName);
-    localStorage.setItem('userPhone', phoneNumber);
+    localStorage.setItem('userPhone', phoneNumber); 
     localStorage.setItem('userPhotoURL', photoURL); 
 
     loginSection.classList.add('hidden');
     mainAppSection.classList.remove('hidden');
-    // Inicia o app na Home, adicionando-a ao histórico
     showScreen(homeScreenId); 
-    console.log("Registro bem-sucedido. Tela principal exibida.");
 });
 
-// Listener para botões de navegação
 viewProductsBtn.addEventListener('click', () => {
     showScreen('products-screen');
+    renderProducts(); 
 });
 
 settingsButton.addEventListener('click', () => {
@@ -441,43 +491,31 @@ if (logoutButton) {
     logoutButton.addEventListener('click', logoutUser);
 }
 
-// Listeners do Carrinho (mantidos do código anterior)
-productGrid.addEventListener('click', (e) => {
-    if (e.target.classList.contains('add-to-cart-btn')) {
-        const productId = parseInt(e.target.dataset.id);
-        const product = products.find(p => p.id === productId);
-
-        const existingItem = cart.find(item => item.id === productId);
-        if (existingItem) {
-            existingItem.quantity++;
-        } else {
-            cart.push({ ...product, quantity: 1 });
-        }
-        updateCart();
-    }
-});
-
+// Listeners do Carrinho usando as novas funções de animação
 cartButton.addEventListener('click', () => {
-    cartModal.classList.remove('hidden');
+    updateCart(); 
+    showModalWithAnimation(cartModal);
 });
 
 closeCartButton.addEventListener('click', () => {
-    cartModal.classList.add('hidden');
+    hideModalWithAnimation(cartModal);
 });
 
 checkoutButton.addEventListener('click', () => {
     if (cart.length > 0) {
-        cartModal.classList.add('hidden');
-        orderConfirmModal.classList.remove('hidden');
+        // Usa a animação de saída para fechar o carrinho
+        hideModalWithAnimation(cartModal);
+        // E a animação de entrada para mostrar a confirmação
+        showModalWithAnimation(orderConfirmModal);
     } else {
-        alert("O carrinho está vazio. Adicione produtos para continuar.");
+        alert(translations[currentLanguage].empty_cart);
     }
 });
 
 sendOrderWhatsappButton.addEventListener('click', sendOrderToWhatsApp);
 
 cancelOrderButton.addEventListener('click', () => {
-    orderConfirmModal.classList.add('hidden');
+    hideModalWithAnimation(orderConfirmModal);
 });
 
 themeToggle.addEventListener('change', () => {
@@ -498,16 +536,14 @@ languageSelect.addEventListener('change', (e) => {
 document.addEventListener('DOMContentLoaded', () => {
     const isRegistered = localStorage.getItem('isRegistered');
     if (isRegistered === 'true') {
-        // Se já registrado, vai para a tela principal
         loginSection.classList.add('hidden');
         mainAppSection.classList.remove('hidden');
-        // A tela inicial (home-screen) é o primeiro item do histórico
         showScreen(homeScreenId);
     } else {
-        // Se não registrado, mostra a tela de login
         loginSection.classList.remove('hidden');
+        loginSection.classList.add('animate-fadeIn'); // Anima a tela de login na abertura
         mainAppSection.classList.add('hidden');
-        screenHistory = []; // Limpa o histórico em caso de logout
+        screenHistory = [];
     }
 
     applyTheme();
