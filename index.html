@@ -98,7 +98,7 @@
                         <img id="profile-preview" class="w-28 h-28 object-cover rounded-full shadow-lg border-4 border-brand-primary dark:border-brand-light ring-4 ring-brand-light/30 dark:ring-brand-primary/30" src="" alt="Pré-visualização da foto de perfil">
                     </div>
                     
-                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-xl cursor-pointer hover:border-brand-primary dark:hover:border-brand-light transition-all duration-300 bg-gray-50/50 dark:bg-gray-700/50">
+                    <div id="profile-picture-upload-area" class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-xl cursor-pointer hover:border-brand-primary dark:hover:border-brand-light transition-all duration-300 bg-gray-50/50 dark:bg-gray-700/50">
                         <input id="profile-picture" type="file" accept="image/*" class="sr-only">
                         <p id="profile-picture-text" class="text-sm text-gray-500 dark:text-gray-400 font-medium">
                             Carregar uma foto
@@ -122,13 +122,17 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
                     </button>
-                    <h1 class="text-3xl font-extrabold text-brand-primary dark:text-brand-light">Nó&Laço</h1>
-                </div>
+                    <img src="https://i.postimg.cc/jjdn6RtR/Logo-03-01.png" alt="Logo Nó&Laço" class="h-8 md:h-9">
+                    </div>
                 
                 <div class="flex items-center space-x-4">
+                    <button id="admin-button" class="p-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full transition-all duration-300 transform hover:scale-110 shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-brand-primary dark:text-brand-light" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                    </button>
+
                     <button id="cart-button" class="relative p-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full transition-all duration-300 transform hover:scale-110 shadow-md">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-brand-primary dark:text-brand-light" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13a2 2 0 100 4m0-4a2 2 0 110 4m0 0a2 2 0 100 4m0-4a2 2 0 110 4m0 0a2 2 0 100 4m0-4a2 2 0 110 4m0 0a2 2 0 100 4m0-4a2 2 0 110 4m0 0a2 2 0 100 4" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13a2 2 0 100 4m0-4a2 2 0 110 4m0 0a2 2 0 100 4m0-4a2 2 0 110 4m0 0a2 2 0 100 4m0-4a2 2 0 110 4m0 0a2 2 0 100 4m0-4a2 2 0 110 4" />
                         </svg>
                         <span id="cart-item-count" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 dark:bg-red-400 rounded-full animate-pulseFast">0</span>
                     </button>
@@ -143,6 +147,7 @@
         </header>
 
         <main class="container mx-auto px-4 py-8 flex-1">
+            
             <div id="home-screen" class="space-y-10 screen-transition">
                 <div class="text-center animate-fadeIn">
                     <h2 class="text-4xl font-extrabold text-brand-primary dark:text-brand-light">Destaques da Semana</h2>
@@ -165,6 +170,33 @@
                 <h2 class="text-3xl font-bold mb-8 text-brand-primary dark:text-brand-light">Todos os Produtos</h2>
                 <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
                     </div>
+            </div>
+            
+            <div id="product-detail-screen" class="hidden screen-transition">
+                <button id="back-from-detail-button" class="text-brand-primary dark:text-brand-light mb-6 flex items-center font-semibold hover:underline transition-colors duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Voltar para Produtos
+                </button>
+                
+                <div id="product-detail-content" class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 lg:p-10 transition-colors duration-300">
+                    </div>
+                
+                <div id="comments-section" class="mt-8 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-xl transition-colors duration-300">
+                    <h3 class="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200">Comentários</h3>
+                    <form id="comment-form" class="space-y-4">
+                        <input type="hidden" id="product-id-comment">
+                        <textarea id="comment-text" class="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-xl shadow-inner focus:outline-none focus:ring-2 focus:ring-brand-primary" rows="3" placeholder="Escreva seu comentário aqui..." required></textarea>
+                        <button type="submit" class="bg-brand-primary text-white font-semibold py-2 px-6 rounded-xl hover:bg-brand-hover transition-colors duration-300">
+                            Publicar Comentário
+                        </button>
+                    </form>
+                    
+                    <div id="comments-list" class="mt-6 space-y-4">
+                        <p class="text-gray-500 dark:text-gray-400" id="no-comments-message">Nenhum comentário ainda.</p>
+                    </div>
+                </div>
             </div>
 
             <div id="settings-screen" class="hidden screen-transition">
@@ -193,6 +225,49 @@
                     </div>
                 </div>
             </div>
+
+            <div id="admin-screen" class="hidden screen-transition">
+                <h2 class="text-3xl font-extrabold text-brand-primary dark:text-brand-light mb-6">Gestão de Produtos (Admin)</h2>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 mb-8">
+                    <h3 id="form-title" class="text-2xl font-bold text-brand-primary mb-4">Adicionar Novo Produto</h3>
+                    <form id="add-product-form" class="space-y-4">
+                        <input type="hidden" id="product-id-to-edit">
+                        
+                        <div>
+                            <label for="product-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome do Produto</label>
+                            <input type="text" id="product-name" class="w-full p-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-700 rounded-xl" required>
+                        </div>
+                        <div>
+                            <label for="product-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label>
+                            <textarea id="product-description" rows="3" class="w-full p-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-700 rounded-xl" required></textarea>
+                        </div>
+                        <div class="flex space-x-4">
+                            <div class="w-1/2">
+                                <label for="product-price" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Preço (R$ Base)</label>
+                                <input type="number" step="0.01" id="product-price" class="w-full p-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-700 rounded-xl" required>
+                            </div>
+                            <div class="w-1/2">
+                                <label for="product-image-url" class="block text-sm font-medium text-gray-700 dark:text-gray-300">URL da Imagem</label>
+                                <input type="url" id="product-image-url" class="w-full p-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-700 rounded-xl" required>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" id="submit-product-button" class="w-full bg-green-500 text-white font-semibold py-3 rounded-xl hover:bg-green-600 transition-colors">
+                            Salvar Produto
+                        </button>
+                        <button type="button" id="cancel-edit-button" class="w-full bg-gray-400 text-gray-800 font-semibold py-3 rounded-xl hover:bg-gray-500 transition-colors hidden">
+                            Cancelar Edição
+                        </button>
+                    </form>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Lista Atual de Produtos</h3>
+                    <div id="product-list-admin" class="space-y-4">
+                        </div>
+                </div>
+            </div>
         </main>
 
         <div id="cart-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 transition-opacity duration-300 hidden flex items-start justify-end p-4 opacity-0">
@@ -206,7 +281,7 @@
                 <div class="p-5 border-t border-gray-200 dark:border-gray-700">
                     <div class="flex justify-between items-center mb-4">
                         <span id="cart-total-label" class="text-xl font-bold text-brand-primary dark:text-brand-light">Total:</span>
-                        <span id="cart-total" class="text-2xl font-extrabold text-brand-primary dark:text-brand-light">R$ 0,00</span>
+                        <span id="cart-total" class="text-2xl font-extrabold text-brand-primary dark:text-brand-light">MZN 0,00</span>
                     </div>
                     <button id="checkout-button" class="w-full bg-green-500 text-white font-extrabold py-3 px-4 rounded-xl shadow-md hover:bg-green-600 transition-all duration-300 transform hover:scale-[1.01]">
                         Finalizar Compra
@@ -229,10 +304,29 @@
                 </div>
             </div>
         </div>
+
+        <div id="admin-login-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0">
+            <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 w-full max-w-sm transform transition-transform duration-300 scale-95">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold text-brand-primary dark:text-brand-light">Acesso Admin</h3>
+                    <button id="close-admin-modal-button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <form id="admin-login-form">
+                    <div class="mb-4">
+                        <label for="admin-code" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Código Secreto:</label>
+                        <input type="password" id="admin-code" class="mt-1 w-full p-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-xl focus:ring-brand-primary focus:border-brand-primary" required>
+                    </div>
+                    <button type="submit" class="w-full bg-brand-primary text-white font-semibold py-3 rounded-xl hover:bg-brand-hover transition-colors">
+                        Entrar
+                    </button>
+                </form>
+            </div>
+        </div>
         
         <div id="notification-message" class="fixed bottom-6 right-6 bg-brand-primary dark:bg-brand-light text-white px-6 py-3 rounded-xl shadow-xl z-50 transition-all duration-300 transform translate-x-full opacity-0">
-            Pedido enviado com sucesso!
-        </div>
+            </div>
     </div>
     
     <script src="script.js"></script>
