@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nó&Laço | Loja de Vendas Online</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+
+    <script>
+        // Suas chaves de configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyC50VFvoKfqgPFU9KBorRlyQ7K-3MrL7YA",
+            authDomain: "no-e-laco.firebaseapp.com",
+            databaseURL: "https://no-e-laco-default-rtdb.firebaseio.com",
+            projectId: "no-e-laco",
+            storageBucket: "no-e-laco.appspot.com", 
+            messagingSenderId: "591421957305",
+            appId: "1:591421957305:web:eed983637ce202c5b62768",
+            measurementId: "G-EK61EY3ZTN"
+        };
+
+        // Inicializa o Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // Expõe as instâncias globais para o script.js
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        // Configuração customizada do Tailwind
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-primary': '#4f46e5', // Indigo-600
+                        'brand-hover': '#4338ca', // Indigo-700
+                        'brand-light': '#818cf8', // Indigo-400
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    },
+                    animation: {
+                        fadeIn: 'fadeIn 0.5s ease-out forwards',
+                        // Usado para botões e pequenos elementos
+                        pulseFast: 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite', 
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* CSS customizado para garantir que as animações funcionem bem */
+        .screen-transition {
+            transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        .screen-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen transition-colors duration-300 dark:bg-gray-900">
+
+    <div id="login-section" class="flex items-center justify-center min-h-screen p-4 animate-fadeIn">
+        <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 transition-colors duration-500">
+            <h1 class="text-4xl font-extrabold text-center text-brand-primary dark:text-brand-light mb-6">Bem-vindo(a)</h1>
+            <div class="flex justify-center mb-8">
+                <img src="https://placehold.co/100x100" alt="Logo da Nó&Laço" class="rounded-full w-24 h-24 shadow-xl border-4 border-brand-light dark:border-brand-primary">
+            </div>
+            <form id="registration-form">
+                <div class="mb-4">
+                    <label for="full-name" class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Nome Completo</label>
+                    <input type="text" id="full-name" name="full-name" class="mt-1 block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-inner focus:outline-none focus:ring-2 focus:ring-brand-primary dark:focus:ring-brand-light transition duration-300" placeholder="Digite seu nome completo" required>
+                </div>
+                <div class="mb-4">
+                    <label for="phone-number" class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Número de Telefone</label>
+                    <div class="mt-1 flex rounded-xl shadow-inner">
+                        <span class="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-sm font-bold">+258</span>
+                        <input type="tel" id="phone-number" name="phone-number" class="flex-1 block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-brand-primary dark:focus:ring-brand-light transition duration-300" placeholder="Ex: 84 123 4567" pattern="[8][2-7] ?[0-9]{3} ?[0-9]{4}" required>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label for="profile-picture-upload" class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Foto de Perfil (opcional)</label>
+                    
+                    <div id="profile-preview-container" class="mt-4 mb-4 flex justify-center hidden transition-all duration-300">
+                        <img id="profile-preview" class="w-28 h-28 object-cover rounded-full shadow-lg border-4 border-brand-primary dark:border-brand-light ring-4 ring-brand-light/30 dark:ring-brand-primary/30" src="" alt="Pré-visualização da foto de perfil">
+                    </div>
+                    
+                    <div id="profile-picture-upload-area" class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-xl cursor-pointer hover:border-brand-primary dark:hover:border-brand-light transition-all duration-300 bg-gray-50/50 dark:bg-gray-700/50">
+                        <input id="profile-picture" type="file" accept="image/*" class="sr-only">
+                        <p id="profile-picture-text" class="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                            Carregar uma foto
+                        </p>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-brand-primary text-white font-extrabold py-3 px-4 rounded-xl shadow-lg hover:bg-brand-hover dark:bg-brand-light dark:hover:bg-brand-primary transition-all duration-300 transform hover:scale-[1.01]">
+                    Continuar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="main-app-section" class="flex flex-col min-h-screen hidden">
+        <header class="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-50 transition-colors duration-300">
+            <nav class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <button id="back-button" class="p-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full transition-all duration-300 transform hover:scale-110 shadow-md hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-brand-primary dark:text-brand-light" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                    </button>
+                    <img src="https://i.postimg.cc/jjdn6RtR/Logo-03-01.png" alt="Logo Nó&Laço" class="h-8 md:h-9">
+                    </div>
+                
+                <div class="flex items-center space-x-4">
+                    <button id="admin-button" class="p-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full transition-all duration-300 transform hover:scale-110 shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-brand-primary dark:text-brand-light" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                    </button>
+
+                    <button id="cart-button" class="relative p-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full transition-all duration-300 transform hover:scale-110 shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-brand-primary dark:text-brand-light" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13a2 2 0 100 4m0-4a2 2 0 110 4m0 0a2 2 0 100 4m0-4a2 2 0 110 4m0 0a2 2 0 100 4m0-4a2 2 0 110 4m0 0a2 2 0 100 4m0-4a2 2 0 110 4" />
+                        </svg>
+                        <span id="cart-item-count" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 dark:bg-red-400 rounded-full animate-pulseFast">0</span>
+                    </button>
+                    <button id="settings-button" class="p-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full transition-all duration-300 transform hover:rotate-45 shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-brand-primary dark:text-brand-light" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.942 3.313.84 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.942 1.543-.84 3.313-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.942-3.313-.84-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.942-1.543.84-3.313 2.37-2.37.996.608 2.298.608 3.294 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </button>
+                </div>
+            </nav>
+        </header>
+
+        <main class="container mx-auto px-4 py-8 flex-1">
+            
+            <div id="home-screen" class="space-y-10 screen-transition">
+                <div class="text-center animate-fadeIn">
+                    <h2 class="text-4xl font-extrabold text-brand-primary dark:text-brand-light">Destaques da Semana</h2>
+                    <p class="mt-2 text-lg text-gray-600 dark:text-gray-400">Produtos selecionados com carinho para você!</p>
+                </div>
+                <div class="relative w-full h-64 bg-gradient-to-r from-brand-primary/10 to-brand-light/10 dark:from-gray-700 dark:to-gray-800 rounded-2xl flex items-center justify-center text-gray-500 dark:text-gray-400 shadow-xl border border-brand-primary/20">
+                    <p class="text-xl font-semibold">Carrossel de Produtos em Destaque</p>
+                </div>
+                
+                <div class="text-center pt-12">
+                    <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Comece Agora</h3>
+                    <p class="mt-2 text-gray-600 dark:text-gray-400">Descubra todos os produtos e informações disponíveis.</p>
+                    <button id="view-products-btn" class="mt-6 bg-brand-primary text-white font-extrabold py-3 px-10 rounded-full shadow-lg hover:bg-brand-hover dark:bg-brand-light dark:hover:bg-brand-primary transition-all duration-300 transform hover:scale-105 ring-2 ring-brand-primary/50 dark:ring-brand-light/50">
+                        Ver Produtos
+                    </button>
+                </div>
+            </div>
+
+            <div id="products-screen" class="hidden screen-transition">
+                <h2 class="text-3xl font-bold mb-8 text-brand-primary dark:text-brand-light">Todos os Produtos</h2>
+                <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                    </div>
+            </div>
+            
+            <div id="product-detail-screen" class="hidden screen-transition">
+                <button id="back-from-detail-button" class="text-brand-primary dark:text-brand-light mb-6 flex items-center font-semibold hover:underline transition-colors duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Voltar para Produtos
+                </button>
+                
+                <div id="product-detail-content" class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 lg:p-10 transition-colors duration-300">
+                    </div>
+                
+                <div id="comments-section" class="mt-8 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-xl transition-colors duration-300">
+                    <h3 class="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200">Comentários</h3>
+                    <form id="comment-form" class="space-y-4">
+                        <input type="hidden" id="product-id-comment">
+                        <textarea id="comment-text" class="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-xl shadow-inner focus:outline-none focus:ring-2 focus:ring-brand-primary" rows="3" placeholder="Escreva seu comentário aqui..." required></textarea>
+                        <button type="submit" class="bg-brand-primary text-white font-semibold py-2 px-6 rounded-xl hover:bg-brand-hover transition-colors duration-300">
+                            Publicar Comentário
+                        </button>
+                    </form>
+                    
+                    <div id="comments-list" class="mt-6 space-y-4">
+                        <p class="text-gray-500 dark:text-gray-400" id="no-comments-message">Nenhum comentário ainda.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="settings-screen" class="hidden screen-transition">
+                <h2 class="text-3xl font-bold mb-8 text-brand-primary dark:text-brand-light">Configurações</h2>
+                <div class="space-y-6">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg flex justify-between items-center transition-colors duration-300">
+                        <span class="text-lg font-medium text-gray-700 dark:text-gray-300">Modo Escuro</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="theme-toggle" class="sr-only peer">
+                            <div class="w-12 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-primary rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-primary"></div>
+                        </label>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg transition-colors duration-300">
+                        <label for="language-select" class="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">Idioma</label>
+                        <select id="language-select" class="block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-xl shadow-inner focus:outline-none focus:ring-2 focus:ring-brand-primary dark:focus:ring-brand-light transition duration-300">
+                            <option value="pt-br">Português (Brasil)</option>
+                            <option value="en-us">English (US)</option>
+                        </select>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg transition-colors duration-300">
+                        <button id="logout-button" class="w-full bg-red-600 text-white font-extrabold py-3 px-4 rounded-xl shadow-lg hover:bg-red-700 transition-all duration-300 transform hover:scale-[1.01] ring-2 ring-red-600/50">
+                            Sair da Conta
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="admin-screen" class="hidden screen-transition">
+                <h2 class="text-3xl font-extrabold text-brand-primary dark:text-brand-light mb-6">Gestão de Produtos (Admin)</h2>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 mb-8">
+                    <h3 id="form-title" class="text-2xl font-bold text-brand-primary mb-4">Adicionar Novo Produto</h3>
+                    <form id="add-product-form" class="space-y-4">
+                        <input type="hidden" id="product-id-to-edit">
+                        
+                        <div>
+                            <label for="product-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome do Produto</label>
+                            <input type="text" id="product-name" class="w-full p-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-700 rounded-xl" required>
+                        </div>
+                        <div>
+                            <label for="product-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label>
+                            <textarea id="product-description" rows="3" class="w-full p-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-700 rounded-xl" required></textarea>
+                        </div>
+                        <div class="flex space-x-4">
+                            <div class="w-1/2">
+                                <label for="product-price" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Preço (R$ Base)</label>
+                                <input type="number" step="0.01" id="product-price" class="w-full p-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-700 rounded-xl" required>
+                            </div>
+                            <div class="w-1/2">
+                                <label for="product-image-url" class="block text-sm font-medium text-gray-700 dark:text-gray-300">URL da Imagem</label>
+                                <input type="url" id="product-image-url" class="w-full p-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-700 rounded-xl" required>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" id="submit-product-button" class="w-full bg-green-500 text-white font-semibold py-3 rounded-xl hover:bg-green-600 transition-colors">
+                            Salvar Produto
+                        </button>
+                        <button type="button" id="cancel-edit-button" class="w-full bg-gray-400 text-gray-800 font-semibold py-3 rounded-xl hover:bg-gray-500 transition-colors hidden">
+                            Cancelar Edição
+                        </button>
+                    </form>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Lista Atual de Produtos</h3>
+                    <div id="product-list-admin" class="space-y-4">
+                        </div>
+                </div>
+            </div>
+        </main>
+
+        <div id="cart-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 transition-opacity duration-300 hidden flex items-start justify-end p-4 opacity-0">
+            <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 transform translate-x-full scale-95">
+                <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-brand-primary dark:text-brand-light">Carrinho de Compras</h2>
+                    <button id="close-cart-button" class="p-2 text-gray-500 hover:text-brand-primary transition-all duration-300 dark:text-gray-400 dark:hover:text-brand-light text-3xl font-extrabold transform hover:rotate-90 rounded-full">&times;</button>
+                </div>
+                <div id="cart-items" class="p-4 overflow-y-auto max-h-80">
+                    </div>
+                <div class="p-5 border-t border-gray-200 dark:border-gray-700">
+                    <div class="flex justify-between items-center mb-4">
+                        <span id="cart-total-label" class="text-xl font-bold text-brand-primary dark:text-brand-light">Total:</span>
+                        <span id="cart-total" class="text-2xl font-extrabold text-brand-primary dark:text-brand-light">MZN 0,00</span>
+                    </div>
+                    <button id="checkout-button" class="w-full bg-green-500 text-white font-extrabold py-3 px-4 rounded-xl shadow-md hover:bg-green-600 transition-all duration-300 transform hover:scale-[1.01]">
+                        Finalizar Compra
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="order-confirm-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 transition-opacity duration-300 hidden flex items-center justify-center p-4 opacity-0">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-8 space-y-6 transition-all duration-300 transform scale-95">
+                <h3 class="text-2xl font-bold text-brand-primary dark:text-brand-light">Confirmar Pedido</h3>
+                <p class="text-gray-700 dark:text-gray-300">Deseja enviar seu pedido agora via WhatsApp?</p>
+                <div class="flex justify-end space-x-4">
+                    <button id="cancel-order-button" class="px-5 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 font-medium">
+                        Cancelar
+                    </button>
+                    <button id="send-order-whatsapp-button" class="px-5 py-2 bg-green-500 text-white font-extrabold rounded-xl shadow-md hover:bg-green-600 transition-all duration-300 transform hover:scale-105">
+                        Fazer Pedido Agora
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-login-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0">
+            <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 w-full max-w-sm transform transition-transform duration-300 scale-95">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold text-brand-primary dark:text-brand-light">Acesso Admin</h3>
+                    <button id="close-admin-modal-button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <form id="admin-login-form">
+                    <div class="mb-4">
+                        <label for="admin-code" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Código Secreto:</label>
+                        <input type="password" id="admin-code" class="mt-1 w-full p-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-xl focus:ring-brand-primary focus:border-brand-primary" required>
+                    </div>
+                    <button type="submit" class="w-full bg-brand-primary text-white font-semibold py-3 rounded-xl hover:bg-brand-hover transition-colors">
+                        Entrar
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div id="notification-message" class="fixed bottom-6 right-6 bg-brand-primary dark:bg-brand-light text-white px-6 py-3 rounded-xl shadow-xl z-50 transition-all duration-300 transform translate-x-full opacity-0">
+            </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
