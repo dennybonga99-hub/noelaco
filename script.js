@@ -1,7 +1,7 @@
 // *** CONFIGURAÇÕES GLOBAIS ***
 // TROQUE ESTES VALORES PARA SUA PRODUÇÃO!
 const ADMIN_SECRET_CODE = "admin123"; 
-const ADMIN_WHATSAPP_NUMBER = "258841234567"; // Seu número de WhatsApp (Moçambique)
+const ADMIN_WHATSAPP_NUMBER = "258878384914"; // Seu número de WhatsApp (Moçambique)
 
 // Configuração da Moeda (Metical Moçambicano)
 const CURRENCY_SYMBOL = "MZN"; 
@@ -843,4 +843,5 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTranslations();
     
     loadProducts(); 
+
 });
