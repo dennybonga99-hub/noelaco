@@ -1,847 +1,964 @@
-// *** CONFIGURAÇÕES GLOBAIS ***
-// TROQUE ESTES VALORES PARA SUA PRODUÇÃO!
-const ADMIN_SECRET_CODE = "admin123"; 
-const ADMIN_WHATSAPP_NUMBER = "258878384914"; // Seu número de WhatsApp (Moçambique)
+// ====================================================================
+// Módulo de Configuração e Estado Global
+// ====================================================================
 
-// Configuração da Moeda (Metical Moçambicano)
-const CURRENCY_SYMBOL = "MZN"; 
-const EXCHANGE_RATE = 10.00; // Exemplo: 1 R$ (base) = 10 MZN
+const CONFIG = {
+    CLOUDINARY_CLOUD_NAME: 'ddjpvbggk',
+    CLOUDINARY_UPLOAD_PRESET: 'nodelaco_preset',
+    ADMIN_WHATSAPP_NUMBER: '258878384914', // Sem o + para o link do WhatsApp
+    INSECURE_ADMIN_CODE: '669900',
+    CURRENCY_SYMBOL: 'MZN',
+};
 
-// Variáveis de estado
-let products = []; 
-let cart = JSON.parse(localStorage.getItem('cart')) || [];
-let currentLanguage = localStorage.getItem('language') || 'pt-br';
-let isDarkMode = localStorage.getItem('darkMode') === 'true';
+const state = {
+    user: JSON.parse(localStorage.getItem('currentUser')) || null,
+    isAdmin: localStorage.getItem('isAdmin') === 'true',
+    cart: JSON.parse(localStorage.getItem('cart')) || [],
+    products: [],
+    currentLanguage: localStorage.getItem('appLang') || 'pt',
+    navigationHistory: [],
+    profilePictureFile: null,
+    productToEdit: null, // Novo estado para o admin CRUD
+};
 
-// Rastreamento do histórico de telas
-let screenHistory = [];
-const homeScreenId = 'home-screen'; 
+// ====================================================================
+// Módulo de Seletores de UI
+// ====================================================================
 
-// --- ELEMENTOS DOM ---
-// Elementos principais
-const loginSection = document.getElementById('login-section');
-const mainAppSection = document.getElementById('main-app-section');
-const registrationForm = document.getElementById('registration-form');
+const UI = {
+    // Globais
+    loadingModal: document.getElementById('loading-modal'),
+    loadingMessage: document.getElementById('loading-message'),
+    notificationMessage: document.getElementById('notification-message'),
+    loginSection: document.getElementById('login-section'),
+    mainAppSection: document.getElementById('main-app-section'),
+    backButton: document.getElementById('back-button'),
 
-// Navegação e Header
-const backButton = document.getElementById('back-button'); 
-const viewProductsBtn = document.getElementById('view-products-btn');
+    // Formulário de Login/Registro
+    registrationForm: document.getElementById('registration-form'),
+    profilePictureInput: document.getElementById('profile-picture'),
+    defaultProfileIcon: document.getElementById('default-profile-icon'),
+    profilePreviewContainer: document.getElementById('profile-preview-container'),
+    profilePreview: document.getElementById('profile-preview'),
 
-// Produtos e Detalhes
-const productGrid = document.getElementById('product-grid');
-const productDetailScreen = document.getElementById('product-detail-screen');
-const productDetailContent = document.getElementById('product-detail-content');
-const backFromDetailButton = document.getElementById('back-from-detail-button');
-const commentForm = document.getElementById('comment-form');
-const productIdCommentInput = document.getElementById('product-id-comment');
-const commentTextInput = document.getElementById('comment-text');
-const commentsList = document.getElementById('comments-list');
-const noCommentsMessage = document.getElementById('no-comments-message');
+    // Header/Navegação
+    cartButton: document.getElementById('cart-button'),
+    cartItemCount: document.getElementById('cart-item-count'),
+    adminButton: document.getElementById('admin-button'),
+    settingsButton: document.getElementById('settings-button'), 
+    searchBar: document.getElementById('search-input'), 
 
-// Carrinho
-const cartButton = document.getElementById('cart-button');
-const cartModal = document.getElementById('cart-modal');
-const closeCartButton = document.getElementById('close-cart-button');
-const cartItemsContainer = document.getElementById('cart-items');
-const cartTotalSpan = document.getElementById('cart-total');
-const cartItemCountSpan = document.getElementById('cart-item-count');
-const checkoutButton = document.getElementById('checkout-button');
-const orderConfirmModal = document.getElementById('order-confirm-modal');
-const cancelOrderButton = document.getElementById('cancel-order-button');
-const sendOrderWhatsappButton = document.getElementById('send-order-whatsapp-button');
-const notificationMessage = document.getElementById('notification-message');
-
-// Configurações
-const settingsButton = document.getElementById('settings-button');
-const settingsScreen = document.getElementById('settings-screen');
-const themeToggle = document.getElementById('theme-toggle');
-const languageSelect = document.getElementById('language-select');
-const logoutButton = document.getElementById('logout-button');
-
-// Login/Foto
-const profilePictureInput = document.getElementById('profile-picture');
-const profilePictureText = document.getElementById('profile-picture-text');
-const profilePictureUploadArea = document.getElementById('profile-picture-upload-area'); 
-const profilePreview = document.getElementById('profile-preview'); 
-const profilePreviewContainer = document.getElementById('profile-preview-container'); 
-
-// Admin
-const adminButton = document.getElementById('admin-button');
-const adminLoginModal = document.getElementById('admin-login-modal');
-const closeAdminModalButton = document.getElementById('close-admin-modal-button');
-const adminLoginForm = document.getElementById('admin-login-form');
-const adminScreen = document.getElementById('admin-screen');
-const productListAdmin = document.getElementById('product-list-admin');
-const addProductForm = document.getElementById('add-product-form');
-const formTitle = document.getElementById('form-title');
-const submitProductButton = document.getElementById('submit-product-button');
-const cancelEditButton = document.getElementById('cancel-edit-button');
-
-
-// --- TRADUÇÕES ---
-const translations = {
-    'pt-br': {
-        'welcome': 'Bem-vindo(a)',
-        'start_now': 'Comece Agora',
-        'discover_products': 'Descubra todos os produtos e informações disponíveis.',
-        'view_products': 'Ver Produtos',
-        'all_products': 'Todos os Produtos',
-        'cart': 'Carrinho de Compras',
-        'empty_cart': 'O carrinho está vazio.',
-        'total': 'Total:',
-        'checkout': 'Finalizar Compra',
-        'success_purchase': 'Pedido enviado com sucesso!',
-        'settings': 'Configurações',
-        'dark_mode': 'Modo Escuro',
-        'language': 'Idioma',
-        'logout': 'Sair da Conta', 
-        'add_to_cart': 'Adicionar ao Carrinho',
-        'quantity': 'Quantidade:',
-        'highlighted_products': 'Destaques da Semana',
-        'highlighted_products_desc': 'Produtos selecionados com carinho para você!',
-        'full_name': 'Nome Completo',
-        'phone_number': 'Número de Telefone',
-        'profile_picture': 'Foto de Perfil (opcional)',
-        'upload_photo': 'Carregar uma foto',
-        'confirm_order': 'Confirmar Pedido',
-        'confirm_message': 'Deseja enviar seu pedido agora via WhatsApp?',
-        'cancel': 'Cancelar',
-        'send_order_now': 'Fazer Pedido Agora',
-        'product_details': 'Detalhes do Produto', 
-        'back_to_products': 'Voltar para Produtos', 
-        'comments': 'Comentários', 
-        'no_comments': 'Nenhum comentário ainda.', 
-        'publish_comment': 'Publicar Comentário', 
-        'enter_comment': 'Escreva seu comentário aqui...', 
-        'added_to_cart': 'Adicionado ao carrinho!',
-        'explore': 'Explore, Descubra, Compre.',
-        'admin_access': 'Acesso Admin',
-        'add_product': 'Adicionar Novo Produto',
-        'edit_product': 'Editar Produto',
-        'save_product': 'Salvar Produto',
-        'cancel_edit': 'Cancelar Edição',
-        'admin_list': 'Lista Atual de Produtos',
-        'name_placeholder': 'Digite seu nome completo',
-        'phone_placeholder': 'Ex: 84 123 4567'
+    // Telas (Screens)
+    screens: {
+        'home': document.getElementById('home-screen'),
+        'products': document.getElementById('products-screen'),
+        'product-detail': document.getElementById('product-detail-screen'),
+        'settings': document.getElementById('settings-screen'),
+        'admin': document.getElementById('admin-screen'),
     },
-    'en-us': {
-        'welcome': 'Welcome',
-        'start_now': 'Start Now',
-        'discover_products': 'Discover all available products and information.',
-        'view_products': 'View Products',
-        'all_products': 'All Products',
-        'cart': 'Shopping Cart',
-        'empty_cart': 'Your cart is empty.',
-        'total': 'Total:',
-        'checkout': 'Checkout',
-        'success_purchase': 'Order sent successfully!',
-        'settings': 'Settings',
-        'dark_mode': 'Dark Mode',
-        'language': 'Language',
-        'logout': 'Log Out', 
-        'add_to_cart': 'Add to Cart',
-        'quantity': 'Quantity:',
-        'highlighted_products': 'Weekly Highlights',
-        'highlighted_products_desc': 'Products specially selected for you!',
-        'full_name': 'Full Name',
-        'phone_number': 'Phone Number',
-        'profile_picture': 'Profile Picture (optional)',
-        'upload_photo': 'Upload a photo',
-        'confirm_order': 'Confirm Order',
-        'confirm_message': 'Do you want to send your order now via WhatsApp?',
-        'cancel': 'Cancel',
-        'send_order_now': 'Place Order Now',
-        'product_details': 'Product Details', 
-        'back_to_products': 'Back to Products', 
-        'comments': 'Comments', 
-        'no_comments': 'No comments yet.', 
-        'publish_comment': 'Post Comment', 
-        'enter_comment': 'Write your comment here...', 
-        'added_to_cart': 'Added to cart!',
-        'explore': 'Explore, Discover, Shop.',
-        'admin_access': 'Admin Access',
-        'add_product': 'Add New Product',
-        'edit_product': 'Edit Product',
-        'save_product': 'Save Product',
-        'cancel_edit': 'Cancel Edit',
-        'admin_list': 'Current Product List',
-        'name_placeholder': 'Enter your full name',
-        'phone_placeholder': 'Ex: 84 123 4567'
+    productGrid: null, 
+    productDetailContent: document.getElementById('product-detail-screen'),
+
+    // Modal do Carrinho
+    cartModal: document.getElementById('cart-modal'),
+    cartPanel: document.getElementById('cart-panel'),
+    closeCartButton: document.getElementById('close-cart-button'),
+    cartItemsContainer: document.getElementById('cart-items'), 
+    cartTotal: document.getElementById('cart-total'),
+    checkoutButton: document.getElementById('checkout-button'),
+
+    // Modal de Confirmação
+    orderConfirmModal: document.getElementById('order-confirm-modal'),
+    cancelOrderButton: document.getElementById('cancel-order-button'),
+    sendOrderWhatsappButton: document.getElementById('send-order-whatsapp-button'),
+
+    // Modal de Admin
+    adminLoginModal: document.getElementById('admin-login-modal'),
+    adminLoginForm: document.getElementById('admin-login-form'),
+    closeAdminModalButton: document.getElementById('close-admin-modal-button'),
+    
+    // Admin CRUD UI (Adicionado)
+    adminPanelTitle: document.getElementById('admin-panel-title'),
+    productFormTitle: document.getElementById('product-form-title'),
+    productForm: document.getElementById('product-form'),
+    productIdInput: document.getElementById('product-id'),
+    productNameInput: document.getElementById('product-name'),
+    productPriceInput: document.getElementById('product-price'),
+    productCategoryInput: document.getElementById('product-category'),
+    productDescriptionInput: document.getElementById('product-description'),
+    productImageInput: document.getElementById('product-image'),
+    submitProductButton: document.getElementById('submit-product-button'),
+    cancelEditButton: document.getElementById('cancel-edit-button'),
+    adminProductList: document.getElementById('admin-product-list'),
+    noProductsMessage: document.getElementById('no-products-message'),
+};
+
+// ====================================================================
+// Módulo de Traduções e Utilitários (Funções genéricas)
+// ====================================================================
+const translations = {
+    pt: {
+        'app-title': 'Nó&Laço - Loja Online',
+        'login-title': 'Cadastre-se para Comprar!',
+        'full-name-label': 'Nome Completo',
+        'phone-number-label': 'Número de Telefone',
+        'login-button': 'Entrar/Registrar',
+        'loading': 'Processando...',
+        'loading-products': 'Carregando produtos...',
+        'upload-photo': 'Carregar uma foto',
+        'search-placeholder': 'Buscar produtos...',
+        'your-cart-title': 'Seu Carrinho',
+        'total-label': 'Total:',
+        'checkout-button': 'Finalizar Compra',
+        'confirm-order-title': 'Confirmar Pedido',
+        'confirm-order-message': 'Seu pedido será enviado via WhatsApp para a finalização e confirmação dos detalhes. Continuar?',
+        'cancel-button': 'Cancelar',
+        'whatsapp-send-button': 'Enviar por WhatsApp',
+        'admin-access-title': 'Acesso de Administrador',
+        'admin-code-label': 'Código Secreto',
+        'app-brand': 'Nó&Laço',
+        'home-welcome': 'Bem-vindo à Nó&Laço!',
+        'home-subtitle': 'A sua loja online de acessórios. Escolha a sua categoria favorita e comece a comprar!',
+        'view-products-btn': 'Ver Todos os Produtos',
+        'add-to-cart-btn': 'Adicionar ao Carrinho',
+        'product-details-title': 'Detalhes do Produto',
+        'admin-panel-title': 'Painel de Administração',
+        'settings-title': 'Configurações',
+        'theme-label': 'Tema Escuro',
+        'language-label': 'Idioma',
+        'logout-button-settings': 'Sair',
+        // ADMIN CRUD TRADUÇÕES
+        'add-new-product-title': 'Adicionar Novo Produto', 
+        'edit-product-title': 'Editar Produto', 
+        'add-product-button': 'Adicionar Produto', 
+        'save-changes-button': 'Salvar Alterações', 
+        'confirm-delete-product': 'Tem certeza que deseja excluir este produto?', 
+    },
+    en: {
+        'app-title': 'Nó&Laço - Online Store',
+        'login-title': 'Sign Up to Shop!',
+        'full-name-label': 'Full Name',
+        'phone-number-label': 'Phone Number',
+        'login-button': 'Log In/Register',
+        'loading': 'Processing...',
+        'loading-products': 'Loading products...',
+        'upload-photo': 'Upload a photo',
+        'search-placeholder': 'Search products...',
+        'your-cart-title': 'Your Cart',
+        'total-label': 'Total:',
+        'checkout-button': 'Checkout',
+        'confirm-order-title': 'Confirm Order',
+        'confirm-order-message': 'Your order will be sent via WhatsApp for finalization and detail confirmation. Continue?',
+        'cancel-button': 'Cancel',
+        'whatsapp-send-button': 'Send via WhatsApp',
+        'admin-access-title': 'Admin Access',
+        'admin-code-label': 'Secret Code',
+        'app-brand': 'Nó&Laço',
+        'home-welcome': 'Welcome to Nó&Laço!',
+        'home-subtitle': 'Your online accessories store. Choose your favorite category and start shopping!',
+        'view-products-btn': 'View All Products',
+        'add-to-cart-btn': 'Add to Cart',
+        'product-details-title': 'Product Details',
+        'admin-panel-title': 'Admin Panel',
+        'settings-title': 'Settings',
+        'theme-label': 'Dark Mode',
+        'language-label': 'Language',
+        'logout-button-settings': 'Logout',
+        // ADMIN CRUD TRADUÇÕES
+        'add-new-product-title': 'Add New Product', 
+        'edit-product-title': 'Edit Product', 
+        'add-product-button': 'Add Product', 
+        'save-changes-button': 'Save Changes', 
+        'confirm-delete-product': 'Are you sure you want to delete this product?',
     }
 };
 
-// --- FUNÇÕES UTILITÁRIAS ---
+function setLanguage(lang) {
+    state.currentLanguage = lang;
+    localStorage.setItem('appLang', lang);
 
-function formatPrice(priceReais) {
-    const priceMZN = priceReais * EXCHANGE_RATE;
-    // O valor é formatado para Meticais (MZN)
-    return `${CURRENCY_SYMBOL} ${priceMZN.toLocaleString('pt-MZ', { minimumFractionDigits: 2 })}`;
-}
-
-function showNotification(title, message, colorClass) {
-    notificationMessage.textContent = `${title}: ${message}`;
-    notificationMessage.className = `fixed bottom-6 right-6 bg-${colorClass} text-white px-6 py-3 rounded-xl shadow-xl z-50 transition-all duration-300 transform translate-x-0 opacity-100`;
-    
-    setTimeout(() => {
-        notificationMessage.classList.add('translate-x-full');
-        notificationMessage.classList.remove('opacity-100');
-        notificationMessage.classList.remove('translate-x-0');
-    }, 3000);
-}
-
-function showModalWithAnimation(modalElement) {
-    modalElement.classList.remove('hidden');
-    setTimeout(() => {
-        modalElement.classList.add('opacity-100');
-        const content = modalElement.querySelector('div:last-child'); // Assumindo que o conteúdo é o último div filho
-        if (content) {
-            content.classList.remove('translate-x-full', 'scale-95');
-            content.classList.add('translate-x-0', 'scale-100');
-        }
-    }, 10);
-}
-
-function hideModalWithAnimation(modalElement) {
-    modalElement.classList.remove('opacity-100');
-    const content = modalElement.querySelector('div:last-child');
-    if (content) {
-        content.classList.add('translate-x-full', 'scale-95');
-        content.classList.remove('translate-x-0', 'scale-100');
-    }
-    setTimeout(() => {
-        modalElement.classList.add('hidden');
-    }, 300); // Deve ser igual ao tempo de transição no CSS/Tailwind
-}
-
-
-// --- FUNÇÕES DE NAVEGAÇÃO E UI ---
-
-function showScreen(screenId, isBack = false) {
-    const screens = [
-        document.getElementById('home-screen'), 
-        document.getElementById('products-screen'), 
-        document.getElementById('settings-screen'), 
-        document.getElementById('product-detail-screen'), 
-        document.getElementById('admin-screen')
-    ];
-    
-    screens.forEach(screen => {
-        if (screen) {
-            screen.classList.remove('screen-visible');
-            screen.classList.add('hidden');
+    document.querySelectorAll('[data-lang]').forEach(element => {
+        const key = element.getAttribute('data-lang');
+        if (translations[lang] && translations[lang][key]) {
+            if (element.tagName === 'INPUT' && element.hasAttribute('placeholder')) {
+                element.placeholder = translations[lang][key];
+            } else if (element.tagName === 'TITLE') {
+                document.title = translations[lang][key];
+            } else {
+                element.textContent = translations[lang][key];
+            }
         }
     });
+}
+
+function toggleLoading(show, messageKey = 'loading') {
+    if (show) {
+        UI.loadingMessage.textContent = translations[state.currentLanguage][messageKey] || 'Loading...';
+        UI.loadingModal.classList.remove('hidden', 'opacity-0');
+        setTimeout(() => UI.loadingModal.classList.remove('opacity-0'), 10);
+    } else {
+        UI.loadingModal.classList.add('opacity-0');
+        setTimeout(() => UI.loadingModal.classList.add('hidden'), 300);
+    }
+}
+
+function showNotification(message, type = 'info') {
+    UI.notificationMessage.textContent = message;
+    UI.notificationMessage.classList.remove('bg-green-500', 'bg-red-500', 'bg-blue-500');
+
+    let bgColor = 'bg-blue-500';
+    if (type === 'success') bgColor = 'bg-green-500';
+    if (type === 'error') bgColor = 'bg-red-500';
+
+    UI.notificationMessage.classList.add(bgColor);
+    UI.notificationMessage.classList.remove('hidden', 'translate-x-full', 'opacity-0');
     
-    const targetScreen = document.getElementById(screenId);
-    if (targetScreen) {
-        targetScreen.classList.remove('hidden');
-        setTimeout(() => {
-            targetScreen.classList.add('screen-visible');
-        }, 10); 
+    // Animação de entrada
+    setTimeout(() => UI.notificationMessage.classList.remove('translate-x-full', 'opacity-0'), 10);
+
+    // Animação de saída
+    setTimeout(() => {
+        UI.notificationMessage.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => UI.notificationMessage.classList.add('hidden'), 300);
+    }, 4000);
+}
+
+function applyTheme(isDark) {
+    if (isDark) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+    }
+}
+
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+    applyTheme(isDark);
+}
+
+// --- Funções de Navegação ---
+function navigateToScreen(screenId, productId = null) {
+    Object.values(UI.screens).forEach(screen => {
+        if (screen) screen.classList.add('hidden');
+    });
+
+    if (screenId === 'home') {
+        UI.backButton.classList.add('hidden');
+    } else {
+        UI.backButton.classList.remove('hidden');
     }
 
-    if (!isBack) {
-        if (screenHistory.length === 0 || screenHistory[screenHistory.length - 1] !== screenId) {
-            screenHistory.push(screenId);
-        }
-    } else {
-        // Se estiver voltando, remove o item atual (o que foi desempilhado)
+    const lastScreen = state.navigationHistory[state.navigationHistory.length - 1];
+    if (lastScreen !== screenId) {
+        state.navigationHistory.push(screenId);
     }
-    
-    // Atualiza o botão de voltar
-    if (screenHistory.length > 1) {
-        backButton.classList.remove('hidden');
-    } else {
-        backButton.classList.add('hidden');
+
+    const screen = UI.screens[screenId];
+    if (screen) screen.classList.remove('hidden');
+
+    if (screenId === 'home') {
+        renderHomeScreen();
+    } else if (screenId === 'products') {
+        renderProducts(state.products);
+    } else if (screenId === 'product-detail' && productId) {
+        renderProductDetail(productId);
+    } else if (screenId === 'settings') {
+        renderSettingsScreen();
+    } else if (screenId === 'admin') {
+        if (state.isAdmin) renderAdminScreen();
+        else navigateToScreen('home'); // Redireciona se não for admin
     }
 }
 
 function goBack() {
-    if (screenHistory.length > 1) {
-        screenHistory.pop();
-        const prevScreenId = screenHistory[screenHistory.length - 1];
-        showScreen(prevScreenId, true); 
-    }
-}
+    state.navigationHistory.pop(); 
+    const previousScreenId = state.navigationHistory[state.navigationHistory.length - 1];
 
-function applyTheme() {
-    if (isDarkMode) {
-        document.documentElement.classList.add('dark');
-        themeToggle.checked = true;
+    if (previousScreenId) {
+        state.navigationHistory.pop(); 
+        navigateToScreen(previousScreenId);
     } else {
-        document.documentElement.classList.remove('dark');
-        themeToggle.checked = false;
+        navigateToScreen('home');
     }
 }
 
-function applyTranslations() {
-    const lang = translations[currentLanguage];
-    
-    // Header e Botões de Navegação
-    document.querySelector('#home-screen h2').textContent = lang.highlighted_products;
-    document.querySelector('#home-screen p.text-lg').textContent = lang.highlighted_products_desc;
-    document.querySelector('#home-screen h3').textContent = lang.start_now;
-    document.querySelector('#home-screen .text-center p:nth-child(2)').textContent = lang.discover_products;
-    viewProductsBtn.textContent = lang.view_products;
-    
-    // Tela de Produtos
-    document.querySelector('#products-screen h2').textContent = lang.all_products;
+// ====================================================================
+// MÓDULO DE LÓGICA DA APLICAÇÃO (Com Firebase v9)
+// ====================================================================
 
-    // Tela de Configurações
-    document.querySelector('#settings-screen h2').textContent = lang.settings;
-    document.querySelector('#settings-screen span.text-lg').textContent = lang.dark_mode;
-    document.querySelector('#settings-screen label[for="language-select"]').textContent = lang.language;
-    logoutButton.textContent = lang.logout;
-    
-    // Modais
-    document.querySelector('#cart-modal h2').textContent = lang.cart;
-    document.getElementById('cart-total-label').textContent = lang.total;
-    checkoutButton.textContent = lang.checkout;
-    document.querySelector('#order-confirm-modal h3').textContent = lang.confirm_order;
-    document.querySelector('#order-confirm-modal p').textContent = lang.confirm_message;
-    cancelOrderButton.textContent = lang.cancel;
-    sendOrderWhatsappButton.textContent = lang.send_order_now;
-    
-    // Tela de Detalhes e Comentários
-    if (backFromDetailButton) backFromDetailButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>${lang.back_to_products}`;
-    if (document.querySelector('#comments-section h3')) document.querySelector('#comments-section h3').textContent = lang.comments;
-    if (commentTextInput) commentTextInput.placeholder = lang.enter_comment;
-    if (noCommentsMessage) noCommentsMessage.textContent = lang.no_comments;
-    if (document.querySelector('#comment-form button')) document.querySelector('#comment-form button').textContent = lang.publish_comment;
+// --- Funções de Upload ---
 
-    // Admin
-    if (document.querySelector('#admin-login-modal h3')) document.querySelector('#admin-login-modal h3').textContent = lang.admin_access;
-    if (formTitle) formTitle.textContent = lang.add_product;
-    if (submitProductButton) submitProductButton.textContent = lang.save_product;
-    if (cancelEditButton) cancelEditButton.textContent = lang.cancel_edit;
-    if (document.querySelector('#product-list-admin')) document.querySelector('#product-list-admin').closest('.bg-white').querySelector('h3').textContent = lang.admin_list;
+async function uploadImage(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CONFIG.CLOUDINARY_UPLOAD_PRESET);
 
-    // Login
-    document.getElementById('full-name').placeholder = lang.name_placeholder;
-    document.getElementById('phone-number').placeholder = lang.phone_placeholder;
-    document.querySelector('label[for="full-name"]').textContent = lang.full_name;
-    document.querySelector('label[for="phone-number"]').textContent = lang.phone_number;
-    document.querySelector('label[for="profile-picture-upload"]').textContent = lang.profile_picture;
-    profilePictureText.textContent = lang.upload_photo;
-
-
-    // Re-renderiza o carrinho com a nova moeda/idioma
-    updateCart(false);
-    
-    // Recarrega a lista de produtos (para traduzir botões)
-    renderProducts();
+    try {
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CONFIG.CLOUDINARY_CLOUD_NAME}/image/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+        if (response.ok) return data.secure_url;
+        else throw new Error(data.error.message);
+    } catch (error) {
+        console.error("Erro ao fazer upload da imagem:", error);
+        return null;
+    }
 }
 
+// --- Lógica de Login/Registro ---
 
-// --- FUNÇÕES DE PRODUTOS E CARRINHO ---
+function handleProfilePictureChange(event) {
+    const file = event.target.files[0];
+    if (file) {
+        state.profilePictureFile = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            UI.profilePreview.src = e.target.result;
+            UI.defaultProfileIcon.classList.add('hidden');
+            UI.profilePreviewContainer.classList.remove('hidden');
+            document.getElementById('profile-picture-upload-area').classList.remove('border-dashed', 'border-main');
+            document.getElementById('profile-picture-upload-area').classList.add('border-solid', 'border-brand-primary');
+            document.getElementById('profile-picture-text').textContent = translations[state.currentLanguage]['upload-photo'];
+        };
+        reader.readAsDataURL(file);
+    }
+}
 
-function renderProducts() {
-    productGrid.innerHTML = '';
-    const lang = translations[currentLanguage];
-    
-    products.forEach(product => {
-        const productCard = document.createElement('div');
-        productCard.className = 'bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden transition-all duration-300 transform hover:scale-[1.03] hover:shadow-2xl cursor-pointer'; 
-        productCard.dataset.id = product.id; 
-        
-        productCard.innerHTML = `
-            <img class="w-full h-48 object-cover transition-transform duration-300 hover:scale-110" src="${product.imageUrl}" alt="${product.name}">
+async function handleRegistration(event) {
+    event.preventDefault();
+    toggleLoading(true, 'loading');
+
+    const { doc, getDoc, setDoc } = window.firebase;
+    const db = window.db;
+
+    const fullName = document.getElementById('full-name').value.trim();
+    const phoneNumber = document.getElementById('phone-number').value.trim().replace(/\D/g, '');
+
+    if (!fullName || !phoneNumber) {
+        showNotification('Por favor, preencha todos os campos.', 'error');
+        toggleLoading(false);
+        return;
+    }
+
+    try {
+        let profilePicUrl = 'https://placehold.co/100x100?text=User';
+
+        if (state.profilePictureFile) {
+            showNotification('Fazendo upload da foto...', 'info');
+            profilePicUrl = await uploadImage(state.profilePictureFile);
+            if (!profilePicUrl) {
+                showNotification('O upload da foto falhou, usando imagem padrão.', 'error');
+            }
+        }
+
+        const userRef = doc(db, 'users', phoneNumber);
+        const docSnap = await getDoc(userRef);
+
+        let userData;
+        if (docSnap.exists()) {
+            userData = docSnap.data();
+            showNotification(`Bem-vindo(a) de volta, ${userData.fullName}!`, 'success');
+        } else {
+            userData = {
+                id: phoneNumber,
+                fullName,
+                phoneNumber,
+                profilePicture: profilePicUrl,
+                createdAt: new Date().toISOString(),
+            };
+            await setDoc(userRef, userData);
+            showNotification(`Cadastro realizado. Bem-vindo(a), ${userData.fullName}!`, 'success');
+        }
+
+        state.user = userData;
+        localStorage.setItem('currentUser', JSON.stringify(userData));
+
+        initializeAppUI();
+    } catch (error) {
+        console.error("Erro no registro/login: ", error);
+        showNotification('Ocorreu um erro. Tente novamente.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+function handleLogout() {
+    localStorage.clear();
+    state.user = null;
+    state.isAdmin = false;
+    state.cart = [];
+    window.location.reload();
+}
+
+// --- Funções de Produto e Renderização ---
+
+async function fetchProducts() {
+    toggleLoading(true, 'loading-products');
+    const { collection, query, orderBy, getDocs } = window.firebase;
+    const db = window.db;
+
+    try {
+        const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+
+        state.products = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    } catch (error) {
+        console.error("Erro ao buscar produtos: ", error);
+        showNotification('Não foi possível carregar os produtos.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+function renderProductCard(product) {
+    const imgUrl = product.imageUrl || 'https://placehold.co/400x300?text=Produto';
+    return `
+        <div class="bg-primary shadow-xl rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+            <img src="${imgUrl}" alt="${product.name}" class="w-full h-48 object-cover cursor-pointer" onclick="navigateToScreen('product-detail', '${product.id}')">
             <div class="p-4">
-                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">${product.name}</h3>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">${product.description ? product.description.substring(0, 50) + '...' : ''}</p>
-                <div class="mt-4 flex items-center justify-between">
-                    <span class="text-2xl font-extrabold text-brand-primary dark:text-brand-light">${formatPrice(product.price)}</span>
-                    <button data-id="${product.id}" class="add-to-cart-btn bg-brand-primary text-white text-sm font-semibold py-2 px-4 rounded-full shadow-md hover:bg-brand-hover dark:bg-brand-light dark:hover:bg-brand-primary transition-colors duration-300 transform hover:scale-105">
-                        ${lang.add_to_cart}
-                    </button>
-                </div>
-            </div>
-        `;
-        productGrid.appendChild(productCard);
-    });
-}
-
-function renderProductDetail(product) {
-    const lang = translations[currentLanguage];
-    
-    productDetailContent.innerHTML = `
-        <div class="lg:flex lg:space-x-10">
-            <div class="lg:w-1/2 mb-6 lg:mb-0 overflow-hidden rounded-xl shadow-lg border-4 border-brand-light/30">
-                <img src="${product.imageUrl}" alt="${product.name}" class="w-full h-96 object-cover transition-transform duration-500 hover:scale-105">
-            </div>
-            
-            <div class="lg:w-1/2 space-y-6">
-                <h2 class="text-4xl font-extrabold text-gray-900 dark:text-gray-100">${product.name}</h2>
-                <span class="inline-block px-3 py-1 text-sm font-semibold text-white bg-brand-primary rounded-full">${lang.product_details}</span>
-                
-                <p class="text-2xl font-bold text-brand-primary dark:text-brand-light">${formatPrice(product.price)}</p>
-                
-                <p class="text-gray-700 dark:text-gray-300 leading-relaxed">${product.description}</p>
-                
-                <button data-id="${product.id}" class="add-to-cart-detail-btn w-full bg-green-500 text-white font-extrabold py-3 px-4 rounded-xl shadow-lg hover:bg-green-600 transition-all duration-300 transform hover:scale-[1.01]">
-                    ${lang.add_to_cart}
+                <h3 class="text-lg font-bold truncate">${product.name}</h3>
+                <p class="text-secondary text-sm mb-2">${product.category}</p>
+                <p class="text-xl font-extrabold text-brand-primary mb-3">${CONFIG.CURRENCY_SYMBOL} ${product.price.toFixed(2)}</p>
+                <button 
+                    class="w-full py-2 px-4 bg-brand-primary text-white rounded-lg hover:bg-brand-hover transition-colors duration-300 text-sm font-semibold"
+                    onclick="addToCart('${product.id}', '${product.name.replace(/'/g, "\\'")}', ${product.price}, '${imgUrl}')"
+                    data-lang="add-to-cart-btn">
+                    Adicionar ao Carrinho
                 </button>
             </div>
         </div>
     `;
-    
-    productIdCommentInput.value = product.id;
 }
 
-function showProductDetail(productId) {
-    const product = products.find(p => p.id === productId);
-    if (!product) return;
-    
-    renderProductDetail(product);
-    loadComments(productId);
-    showScreen('product-detail-screen');
-}
-
-function addToCart(productId) {
-    const product = products.find(p => p.id === productId);
-    if (!product) return;
-
-    const existingItem = cart.find(item => item.id === productId);
-    if (existingItem) {
-        existingItem.quantity++;
-    } else {
-        cart.push({ 
-            id: product.id, 
-            name: product.name, 
-            price: product.price, 
-            quantity: 1 
-        });
+function renderProducts(products) {
+    const productsScreen = UI.screens['products'];
+    if (!productsScreen.innerHTML.trim() || !document.getElementById('product-grid')) {
+        productsScreen.innerHTML = `<div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-4"></div>`;
+        UI.productGrid = document.getElementById('product-grid');
     }
-    updateCart();
-    showNotification(translations[currentLanguage].added_to_cart, `${product.name} adicionado.`, 'green-500');
-}
+    
+    const filteredProducts = products; // Lógica de busca/filtro pode ser implementada aqui
 
-function updateCart(saveToStorage = true) { 
-    cartItemsContainer.innerHTML = '';
-    let total = 0;
-    let totalItems = 0;
-    const lang = translations[currentLanguage];
-
-    if (cart.length === 0) {
-        cartItemsContainer.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 py-6">${lang.empty_cart}</p>`;
-    } else {
-        cart.forEach(item => {
-            const itemTotal = item.price * item.quantity;
-            total += itemTotal;
-            totalItems += item.quantity;
-            const cartItem = document.createElement('div');
-            cartItem.className = 'flex items-center justify-between py-3 px-2 border-b last:border-b-0 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200 rounded-lg';
-            cartItem.innerHTML = `
-                <div>
-                    <p class="text-brand-primary dark:text-brand-light font-semibold">${item.name}</p>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm">${lang.quantity} ${item.quantity} x ${formatPrice(item.price)}</p>
-                </div>
-                <span class="font-bold text-brand-primary dark:text-brand-light">${formatPrice(itemTotal)}</span>
-            `;
-            cartItemsContainer.appendChild(cartItem);
-        });
+    if (UI.productGrid) {
+        UI.productGrid.innerHTML = filteredProducts.map(renderProductCard).join('');
     }
-    cartTotalSpan.textContent = formatPrice(total);
-    cartItemCountSpan.textContent = totalItems;
-    
-    if (saveToStorage) {
-        localStorage.setItem('cart', JSON.stringify(cart));
-    }
+    setLanguage(state.currentLanguage);
 }
 
-function clearCart() {
-    cart = [];
-    updateCart();
-    localStorage.removeItem('cart');
-}
-
-function sendOrderToWhatsApp() {
-    hideModalWithAnimation(orderConfirmModal);
-    
-    const userName = localStorage.getItem('userName') || 'Cliente';
-    const userPhone = localStorage.getItem('userPhone') || 'Não Informado';
-
-    let message = `Olá! Meu nome é ${userName} e gostaria de fazer um pedido da Nó&Laço.\n\n`;
-    message += `*Detalhes do Cliente:*\n`;
-    message += `*Nome:* ${userName}\n`;
-    message += `*Telefone:* +258 ${userPhone}\n\n`;
-    message += `*Meu Pedido:*\n`;
-
-    let totalReais = 0;
-    cart.forEach((item, index) => {
-        const itemTotalReais = item.price * item.quantity;
-        totalReais += itemTotalReais;
-        message += `${index + 1}. ${item.name} (${formatPrice(item.price)}) x ${item.quantity} = ${formatPrice(itemTotalReais)}\n`;
-    });
-
-    message += `\n*Total a Pagar:* ${formatPrice(totalReais)}`;
-    message += `\n\nPor favor, confirme a disponibilidade e o valor total. Obrigado!`;
-
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodedMessage}`;
-
-    window.open(whatsappUrl, '_blank');
-    clearCart();
-    showNotification(translations[currentLanguage].success_purchase, "Detalhes do pedido enviados.", 'green-500');
-}
-
-
-// --- FUNÇÕES DE FIREBASE ---
-
-async function loadProducts() {
-    if (typeof db === 'undefined') return;
-    
-    try {
-        const snapshot = await db.collection('produtos').get();
-        products = snapshot.docs.map(doc => ({
-            id: doc.id, 
-            ...doc.data()
-        }));
-        
-        console.log(`Produtos carregados: ${products.length}`);
-        renderProducts(); 
-        if (adminScreen && !adminScreen.classList.contains('hidden')) {
-            renderAdminProductList();
-        }
-        
-    } catch (error) {
-        console.error("Erro ao carregar produtos do Firestore:", error);
-    }
-}
-
-async function loadComments(productId) {
-    const lang = translations[currentLanguage];
-    commentsList.innerHTML = '';
-    
-    if (typeof db === 'undefined') {
-        commentsList.innerHTML = `<p class="text-red-500 dark:text-red-400">ERRO: Firebase não conectado para carregar comentários.</p>`;
+function renderProductDetail(productId) {
+    const product = state.products.find(p => p.id === productId);
+    if (!product) {
+        showNotification('Produto não encontrado.', 'error');
+        navigateToScreen('products');
         return;
     }
 
-    try {
-        const commentsRef = db.collection('comments').where('productId', '==', productId.toString()).orderBy('timestamp', 'desc');
-        const snapshot = await commentsRef.get();
-        
-        if (snapshot.empty) {
-            noCommentsMessage.classList.remove('hidden');
-        } else {
-            noCommentsMessage.classList.add('hidden');
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                const commentDiv = document.createElement('div');
-                commentDiv.className = 'border-l-4 border-brand-primary/50 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg shadow-sm';
-                commentDiv.innerHTML = `
-                    <p class="font-semibold text-gray-800 dark:text-gray-200">${data.userName || 'Cliente'}</p>
-                    <p class="text-gray-600 dark:text-gray-400 mt-1">${data.text}</p>
-                    <span class="text-xs text-gray-400 dark:text-gray-500 block mt-1">${data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString() : 'Agora'}</span>
-                `;
-                commentsList.appendChild(commentDiv);
-            });
-        }
-    } catch (error) {
-        console.error("Erro ao carregar comentários:", error);
-        commentsList.innerHTML = `<p class="text-red-500 dark:text-red-400">Não foi possível carregar os comentários.</p>`;
-    }
-}
+    const imgUrl = product.imageUrl || 'https://placehold.co/600x600?text=Produto';
 
-// --- FUNÇÕES DE ADMIN (CRUD) ---
-
-function renderAdminProductList() {
-    productListAdmin.innerHTML = '';
-    
-    if (products.length === 0) {
-        productListAdmin.innerHTML = '<p class="text-center text-gray-500 py-4">Nenhum produto cadastrado.</p>';
-        return;
-    }
-
-    products.forEach(product => {
-        const item = document.createElement('div');
-        item.className = 'flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-xl shadow-sm hover:shadow-md transition-shadow';
-        item.innerHTML = `
-            <div class="flex items-center space-x-4">
-                <img src="${product.imageUrl}" class="w-12 h-12 object-cover rounded-md" alt="${product.name}">
-                <div>
-                    <p class="font-bold text-gray-900 dark:text-gray-100">${product.name}</p>
-                    <p class="text-sm text-brand-primary dark:text-brand-light">${formatPrice(product.price)}</p>
+    UI.productDetailContent.innerHTML = `
+        <div class="max-w-4xl mx-auto bg-primary rounded-xl shadow-2xl overflow-hidden md:flex">
+            <div class="md:w-1/2 p-4">
+                <img src="${imgUrl}" alt="${product.name}" class="w-full h-96 object-cover rounded-lg shadow-lg">
+            </div>
+            <div class="md:w-1/2 p-6 space-y-4">
+                <h1 class="text-4xl font-extrabold text-brand-primary">${product.name}</h1>
+                <p class="text-secondary text-lg">${product.category}</p>
+                <p class="text-2xl font-black text-green-500">${CONFIG.CURRENCY_SYMBOL} ${product.price.toFixed(2)}</p>
+                <p class="text-primary leading-relaxed">${product.description || 'Descrição não disponível.'}</p>
+                
+                <div class="pt-4">
+                    <button 
+                        class="w-full py-3 px-6 bg-brand-primary text-white rounded-xl hover:bg-brand-hover transition-colors duration-300 text-lg font-semibold flex items-center justify-center space-x-2"
+                        onclick="addToCart('${product.id}', '${product.name.replace(/'/g, "\\'")}', ${product.price}, '${imgUrl}')">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span data-lang="add-to-cart-btn">Adicionar ao Carrinho</span>
+                    </button>
                 </div>
             </div>
-            <div class="space-x-2">
-                <button data-id="${product.id}" class="edit-product-btn text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-200 p-1 rounded transition-colors" title="Editar">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-4.606 5.645L1 17.25V19h1.75l8.114-8.114-2.828-2.828z" /></svg>
-                </button>
-                <button data-id="${product.id}" class="remove-product-btn text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 p-1 rounded transition-colors" title="Remover">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 100 2v6a1 1 0 100-2V8z" clip-rule="evenodd" /></svg>
-                </button>
+        </div>
+    `;
+    setLanguage(state.currentLanguage);
+}
+
+
+// --- Funções de Carrinho ---
+
+function saveCart() {
+    localStorage.setItem('cart', JSON.stringify(state.cart));
+}
+
+function updateCartUI() {
+    UI.cartItemCount.textContent = state.cart.reduce((total, item) => total + item.quantity, 0);
+    UI.cartItemsContainer.innerHTML = '';
+
+    if (state.cart.length === 0) {
+        UI.cartItemsContainer.innerHTML = `<p class="text-center text-secondary py-10">O carrinho está vazio.</p>`;
+        UI.cartTotal.textContent = `${CONFIG.CURRENCY_SYMBOL} 0.00`;
+        UI.checkoutButton.disabled = true;
+        return;
+    }
+
+    let total = 0;
+    state.cart.forEach(item => {
+        total += item.price * item.quantity;
+        UI.cartItemsContainer.innerHTML += `
+            <div class="flex items-center justify-between p-3 bg-primary rounded-lg shadow-sm">
+                <img src="${item.imageUrl}" alt="${item.name}" class="w-12 h-12 object-cover rounded-md">
+                <div class="flex-grow mx-3 truncate">
+                    <p class="font-semibold truncate">${item.name}</p>
+                    <p class="text-sm text-secondary">${CONFIG.CURRENCY_SYMBOL} ${item.price.toFixed(2)} x ${item.quantity}</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="number" min="1" value="${item.quantity}" 
+                        onchange="updateCartItemQuantity('${item.id}', this.value)"
+                        class="w-12 text-center border rounded-md bg-secondary border-main text-primary">
+                    <button class="text-red-500 hover:text-red-700 p-1 rounded-full" onclick="removeFromCart('${item.id}')">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                </div>
             </div>
         `;
-        productListAdmin.appendChild(item);
     });
+
+    UI.cartTotal.textContent = `${CONFIG.CURRENCY_SYMBOL} ${total.toFixed(2)}`;
+    UI.checkoutButton.disabled = false;
 }
 
-function fillProductFormForEdit(productId) {
-    const product = products.find(p => p.id === productId);
-    if (!product) return;
-    
-    document.getElementById('product-id-to-edit').value = productId;
-    document.getElementById('product-name').value = product.name;
-    document.getElementById('product-description').value = product.description;
-    document.getElementById('product-price').value = product.price;
-    document.getElementById('product-image-url').value = product.imageUrl;
-    
-    formTitle.textContent = translations[currentLanguage].edit_product;
-    submitProductButton.textContent = translations[currentLanguage].save_product;
-    cancelEditButton.classList.remove('hidden');
+function addToCart(id, name, price, imageUrl, quantity = 1) {
+    const existingItem = state.cart.find(item => item.id === id);
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const qty = parseInt(quantity);
+
+    if (existingItem) {
+        existingItem.quantity += qty;
+    } else {
+        state.cart.push({ id, name, price, imageUrl, quantity: qty });
+    }
+
+    saveCart();
+    updateCartUI();
+    showNotification(`${name} adicionado ao carrinho!`, 'success');
 }
+
+function removeFromCart(id) {
+    state.cart = state.cart.filter(item => item.id !== id);
+    saveCart();
+    updateCartUI();
+    showNotification('Item removido do carrinho.', 'info');
+}
+
+function updateCartItemQuantity(id, quantity) {
+    const qty = parseInt(quantity);
+    if (qty <= 0) {
+        removeFromCart(id);
+        return;
+    }
+
+    const item = state.cart.find(i => i.id === id);
+    if (item) {
+        item.quantity = qty;
+        saveCart();
+        updateCartUI();
+    }
+}
+
+function openCartModal() {
+    updateCartUI();
+    UI.cartModal.classList.remove('hidden');
+    UI.cartPanel.classList.remove('translate-x-full');
+    setTimeout(() => UI.cartModal.classList.add('opacity-100'), 10);
+}
+
+function closeCartModal() {
+    UI.cartPanel.classList.add('translate-x-full');
+    UI.cartModal.classList.remove('opacity-100');
+    setTimeout(() => UI.cartModal.classList.add('hidden'), 300);
+}
+
+function prepareOrderMessage() {
+    const total = state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    let message = `*Novo Pedido Nó&Laço*\n\n`;
+    message += `*Cliente:* ${state.user.fullName} (Tel: ${state.user.phoneNumber})\n\n`;
+    message += `*Itens do Pedido:*\n`;
+
+    state.cart.forEach((item, index) => {
+        message += `${index + 1}. ${item.name}\n`;
+        message += `   Quantidade: ${item.quantity}\n`;
+        message += `   Preço: ${CONFIG.CURRENCY_SYMBOL} ${item.price.toFixed(2)}/un\n`;
+        message += `   Subtotal: ${CONFIG.CURRENCY_SYMBOL} ${(item.price * item.quantity).toFixed(2)}\n`;
+    });
+
+    message += `\n*Total a Pagar:* ${CONFIG.CURRENCY_SYMBOL} ${total.toFixed(2)}\n\n`;
+    message += `Por favor, confirme os detalhes do pagamento e entrega.`;
+
+    return encodeURIComponent(message);
+}
+
+function sendOrderViaWhatsApp() {
+    const message = prepareOrderMessage();
+    const whatsappUrl = `https://wa.me/${CONFIG.ADMIN_WHATSAPP_NUMBER}?text=${message}`;
+    window.open(whatsappUrl, '_blank');
+
+    state.cart = [];
+    saveCart();
+    updateCartUI();
+    closeOrderConfirmModal();
+    closeCartModal();
+    showNotification('Pedido enviado com sucesso para o WhatsApp!', 'success');
+}
+
+function openOrderConfirmModal() {
+    if (state.cart.length === 0) {
+        showNotification('O carrinho está vazio!', 'error');
+        return;
+    }
+    UI.orderConfirmModal.classList.remove('hidden', 'opacity-0');
+    setTimeout(() => UI.orderConfirmModal.classList.remove('opacity-0'), 10);
+}
+
+function closeOrderConfirmModal() {
+    UI.orderConfirmModal.classList.add('opacity-0');
+    setTimeout(() => UI.orderConfirmModal.classList.add('hidden'), 300);
+}
+
+// --- Funções de Admin e CRUD de Produtos ---
+
+function handleAdminLogin(event) {
+    event.preventDefault();
+    const code = document.getElementById('admin-code').value;
+
+    if (code === CONFIG.INSECURE_ADMIN_CODE) {
+        state.isAdmin = true;
+        localStorage.setItem('isAdmin', 'true');
+        closeAdminModal();
+        showNotification('Login de Admin bem-sucedido!', 'success');
+        navigateToScreen('admin');
+    } else {
+        showNotification('Código secreto incorreto.', 'error');
+    }
+    document.getElementById('admin-code').value = '';
+}
+
+function closeAdminModal() {
+    UI.adminLoginModal.classList.add('opacity-0');
+    setTimeout(() => UI.adminLoginModal.classList.add('hidden'), 300);
+}
+
+function updateAdminButtonVisibility() {
+    if (state.isAdmin) {
+        UI.adminButton.classList.remove('hidden');
+    } 
+    // Mantido visível para login: UI.adminButton.classList.add('hidden');
+}
+
+// ADMIN CRUD FUNCTIONS
 
 function resetProductForm() {
-    addProductForm.reset();
-    document.getElementById('product-id-to-edit').value = '';
-    formTitle.textContent = translations[currentLanguage].add_product;
-    submitProductButton.textContent = translations[currentLanguage].save_product;
-    cancelEditButton.classList.add('hidden');
+    UI.productForm.reset();
+    UI.productIdInput.value = '';
+    UI.productFormTitle.textContent = translations[state.currentLanguage]['add-new-product-title'] || 'Adicionar Novo Produto';
+    UI.submitProductButton.textContent = translations[state.currentLanguage]['add-product-button'] || 'Adicionar Produto';
+    UI.submitProductButton.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+    UI.submitProductButton.classList.add('bg-green-500', 'hover:bg-green-600');
+    UI.cancelEditButton.classList.add('hidden');
+    state.productToEdit = null;
+    UI.productImageInput.value = ''; // Limpa o campo de arquivo
 }
 
+async function handleProductSubmit(event) {
+    event.preventDefault();
+    toggleLoading(true, 'loading');
 
-// --- EVENT LISTENERS ---
+    const { doc, setDoc, collection } = window.firebase;
+    const db = window.db;
 
-// Login/Registro e Foto
-if (profilePictureUploadArea) {
-    profilePictureUploadArea.addEventListener('click', () => {
-        profilePictureInput.click();
-    });
-}
-profilePictureInput.addEventListener('change', () => {
-    const file = profilePictureInput.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            profilePreview.src = e.target.result;
-            profilePreviewContainer.classList.remove('hidden');
-        }
-        reader.readAsDataURL(file);
-        profilePictureText.textContent = file.name;
-    } else {
-        profilePreview.src = '';
-        profilePreviewContainer.classList.add('hidden');
-        profilePictureText.textContent = translations[currentLanguage].upload_photo;
-    }
-});
+    const id = UI.productIdInput.value || doc(collection(db, "products")).id; 
+    const isEditing = !!UI.productIdInput.value;
 
-registrationForm.addEventListener('submit', async (e) => {
-    e.preventDefault(); 
-    const fullName = document.getElementById('full-name').value;
-    const phoneNumber = document.getElementById('phone-number').value.replace(/\s/g, '');
-    const file = profilePictureInput.files[0];
-    let photoURL = '';
+    const productName = UI.productNameInput.value;
+    const productPrice = parseFloat(UI.productPriceInput.value);
+    const productCategory = UI.productCategoryInput.value;
+    const productDescription = UI.productDescriptionInput.value;
+    let productImageUrl = isEditing && state.productToEdit ? state.productToEdit.imageUrl : 'https://placehold.co/400x300?text=Produto'; 
 
     try {
-        if (file) {
-            const storageRef = storage.ref(`profile_pictures/${phoneNumber}-${Date.now()}`);
-            const uploadTask = await storageRef.put(file);
-            photoURL = await uploadTask.ref.getDownloadURL();
-        }
-
-        await db.collection('users').doc(phoneNumber).set({
-            fullName: fullName,
-            phone: phoneNumber,
-            photoURL: photoURL,
-            registeredAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-
-        // Salvar dados na memória local para manter o login
-        localStorage.setItem('isRegistered', 'true');
-        localStorage.setItem('userName', fullName);
-        localStorage.setItem('userPhone', phoneNumber);
-        localStorage.setItem('userPhotoURL', photoURL);
-        
-        loginSection.classList.add('hidden');
-        mainAppSection.classList.remove('hidden');
-        showScreen(homeScreenId);
-
-    } catch (error) {
-        console.error("Erro no registro ou upload:", error);
-        alert("Ocorreu um erro ao tentar registrar. Verifique sua conexão e tente novamente.");
-    }
-});
-
-// Navegação
-viewProductsBtn.addEventListener('click', () => showScreen('products-screen'));
-settingsButton.addEventListener('click', () => showScreen('settings-screen'));
-if (backButton) backButton.addEventListener('click', goBack);
-if (backFromDetailButton) backFromDetailButton.addEventListener('click', () => showScreen('products-screen'));
-if (logoutButton) logoutButton.addEventListener('click', () => {
-    localStorage.clear();
-    location.reload(); 
-});
-
-// Carrinho e Checkout
-cartButton.addEventListener('click', () => showModalWithAnimation(cartModal));
-closeCartButton.addEventListener('click', () => hideModalWithAnimation(cartModal));
-checkoutButton.addEventListener('click', () => {
-    if (cart.length > 0) {
-        hideModalWithAnimation(cartModal);
-        showModalWithAnimation(orderConfirmModal);
-    } else {
-        showNotification("Carrinho Vazio", "Adicione produtos antes de finalizar.", 'red-500');
-    }
-});
-cancelOrderButton.addEventListener('click', () => hideModalWithAnimation(orderConfirmModal));
-sendOrderWhatsappButton.addEventListener('click', sendOrderToWhatsApp);
-
-// Interação com Produtos (Grid de Produtos)
-productGrid.addEventListener('click', (e) => {
-    const target = e.target;
-    const productId = target.closest('.rounded-2xl[data-id]')?.dataset.id || target.closest('.add-to-cart-btn')?.dataset.id;
-    
-    if (!productId) return;
-
-    if (target.classList.contains('add-to-cart-btn')) {
-        e.stopPropagation();
-        addToCart(productId);
-    } else if (target.closest('.rounded-2xl[data-id]')) {
-        showProductDetail(productId);
-    }
-});
-
-// Interação com Detalhes (Tela de Detalhes)
-productDetailContent.addEventListener('click', (e) => {
-    if (e.target.classList.contains('add-to-cart-detail-btn')) {
-        addToCart(e.target.dataset.id);
-    }
-});
-
-// Comentários
-commentForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (typeof db === 'undefined') return;
-
-    const productId = productIdCommentInput.value;
-    const commentText = commentTextInput.value.trim();
-    const userName = localStorage.getItem('userName') || 'Cliente';
-
-    if (commentText.length === 0) return;
-
-    try {
-        await db.collection('comments').add({
-            productId: productId,
-            text: commentText,
-            userName: userName,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        commentTextInput.value = ''; 
-        loadComments(productId); 
-        
-        showNotification("Comentário Publicado", "Obrigado pela sua opinião!", 'brand-primary');
-
-    } catch (error) {
-        console.error("Erro ao publicar comentário:", error);
-        showNotification("Erro", "Não foi possível publicar seu comentário.", 'red-500');
-    }
-});
-
-// Tema e Idioma
-themeToggle.addEventListener('change', () => {
-    isDarkMode = themeToggle.checked;
-    localStorage.setItem('darkMode', isDarkMode);
-    applyTheme();
-});
-languageSelect.addEventListener('change', (e) => {
-    currentLanguage = e.target.value;
-    localStorage.setItem('language', currentLanguage);
-    applyTranslations();
-});
-
-// Admin
-adminButton.addEventListener('click', () => showModalWithAnimation(adminLoginModal));
-closeAdminModalButton.addEventListener('click', () => hideModalWithAnimation(adminLoginModal));
-
-adminLoginForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const code = document.getElementById('admin-code').value;
-    
-    if (code === ADMIN_SECRET_CODE) {
-        hideModalWithAnimation(adminLoginModal);
-        showScreen('admin-screen');
-        renderAdminProductList();
-        resetProductForm();
-    } else {
-        alert("Código Secreto Incorreto.");
-    }
-    adminLoginForm.reset();
-});
-
-// CRUD de Produtos
-addProductForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const idToEdit = document.getElementById('product-id-to-edit').value;
-    const data = {
-        name: document.getElementById('product-name').value,
-        description: document.getElementById('product-description').value,
-        price: parseFloat(document.getElementById('product-price').value),
-        imageUrl: document.getElementById('product-image-url').value,
-    };
-    
-    try {
-        if (idToEdit) {
-            await db.collection('produtos').doc(idToEdit).update(data);
-            showNotification("Sucesso", `Produto ${data.name} atualizado.`, 'green-500');
-        } else {
-            await db.collection('produtos').add(data);
-            showNotification("Sucesso", `Produto ${data.name} adicionado.`, 'green-500');
-        }
-        resetProductForm();
-        await loadProducts(); // Recarrega todas as listas
-    } catch (error) {
-        console.error("Erro no CRUD do produto:", error);
-        showNotification("Erro", "Falha ao salvar o produto.", 'red-500');
-    }
-});
-
-productListAdmin.addEventListener('click', async (e) => {
-    const target = e.target;
-    const productId = target.closest('[data-id]')?.dataset.id;
-    if (!productId) return;
-
-    if (target.classList.contains('edit-product-btn')) {
-        fillProductFormForEdit(productId);
-    } else if (target.classList.contains('remove-product-btn')) {
-        if (confirm("Tem certeza que deseja remover este produto?")) {
-            try {
-                await db.collection('produtos').doc(productId).delete();
-                showNotification("Removido", "Produto excluído com sucesso.", 'red-500');
-                await loadProducts();
-            } catch (error) {
-                console.error("Erro ao remover produto:", error);
-                showNotification("Erro", "Falha ao remover o produto.", 'red-500');
+        if (UI.productImageInput.files[0]) {
+            showNotification('Fazendo upload da imagem do produto...', 'info');
+            const newImageUrl = await uploadImage(UI.productImageInput.files[0]);
+            if (newImageUrl) {
+                productImageUrl = newImageUrl;
+            } else {
+                showNotification('Falha no upload da imagem, usando a imagem anterior/padrão.', 'error');
             }
         }
+
+        const productData = {
+            name: productName,
+            price: productPrice,
+            category: productCategory,
+            description: productDescription,
+            imageUrl: productImageUrl,
+            createdAt: state.productToEdit ? state.productToEdit.createdAt : new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        await setDoc(doc(db, 'products', id), productData);
+
+        if (isEditing) {
+            showNotification('Produto atualizado com sucesso!', 'success');
+        } else {
+            showNotification('Novo produto adicionado com sucesso!', 'success');
+        }
+
+        await fetchProducts(); 
+        renderAdminScreen(); 
+        resetProductForm();
+
+    } catch (error) {
+        console.error("Erro ao salvar produto: ", error);
+        showNotification('Erro ao salvar produto. Tente novamente.', 'error');
+    } finally {
+        toggleLoading(false);
     }
-});
+}
 
-cancelEditButton.addEventListener('click', resetProductForm);
+function editProduct(productId) {
+    const product = state.products.find(p => p.id === productId);
+    if (!product) return;
 
+    state.productToEdit = product; 
 
-// --- INICIALIZAÇÃO ---
-document.addEventListener('DOMContentLoaded', () => {
-    const isRegistered = localStorage.getItem('isRegistered');
+    UI.productIdInput.value = product.id;
+    UI.productNameInput.value = product.name;
+    UI.productPriceInput.value = product.price;
+    UI.productCategoryInput.value = product.category;
+    UI.productDescriptionInput.value = product.description;
     
-    if (isRegistered === 'true') {
-        loginSection.classList.add('hidden');
-        mainAppSection.classList.remove('hidden');
-        showScreen(homeScreenId);
+    UI.productFormTitle.textContent = translations[state.currentLanguage]['edit-product-title'] || 'Editar Produto';
+    UI.submitProductButton.textContent = translations[state.currentLanguage]['save-changes-button'] || 'Salvar Alterações';
+    UI.submitProductButton.classList.remove('bg-green-500', 'hover:bg-green-600');
+    UI.submitProductButton.classList.add('bg-blue-500', 'hover:bg-blue-600');
+    UI.cancelEditButton.classList.remove('hidden');
+
+    UI.adminPanelTitle.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function deleteProduct(productId) {
+    if (!confirm(translations[state.currentLanguage]['confirm-delete-product'] || 'Tem certeza que deseja excluir este produto?')) {
+        return;
+    }
+
+    toggleLoading(true, 'loading');
+    const { doc, deleteDoc } = window.firebase;
+    const db = window.db;
+
+    try {
+        await deleteDoc(doc(db, 'products', productId));
+
+        showNotification('Produto excluído com sucesso!', 'success');
+        await fetchProducts(); 
+        renderAdminScreen(); 
+
+    } catch (error) {
+        console.error("Erro ao excluir produto: ", error);
+        showNotification('Erro ao excluir produto. Tente novamente.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+
+// ====================================================================
+// Módulo de Renderização de Telas
+// ====================================================================
+
+function renderHomeScreen() {
+    const homeScreen = UI.screens['home'];
+    homeScreen.innerHTML = `
+        <div class="text-center py-16 px-4 bg-secondary rounded-xl shadow-lg">
+            <h2 class="text-5xl font-extrabold text-brand-primary mb-4" data-lang="home-welcome">Bem-vindo à Nó&Laço!</h2>
+            <p class="text-xl text-secondary mb-8" data-lang="home-subtitle">A sua loja online de acessórios. Escolha a sua categoria favorita e comece a comprar!</p>
+            <button id="view-products-btn" class="py-3 px-8 bg-brand-primary text-white text-lg font-semibold rounded-xl hover:bg-brand-hover transition-colors duration-300" data-lang="view-products-btn">
+                Ver Todos os Produtos
+            </button>
+        </div>
+
+        <h3 class="text-3xl font-bold mt-12 mb-6 text-primary">Destaques</h3>
+        <div id="featured-products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            ${state.products.slice(0, 3).map(renderProductCard).join('')}
+        </div>
+    `;
+    document.getElementById('view-products-btn').addEventListener('click', () => navigateToScreen('products'));
+    setLanguage(state.currentLanguage);
+}
+
+function renderSettingsScreen() {
+    const settingsScreen = UI.screens['settings'];
+    settingsScreen.innerHTML = `
+        <div class="max-w-xl mx-auto bg-secondary p-8 rounded-xl shadow-2xl space-y-6">
+            <h2 class="text-3xl font-bold text-center text-brand-primary" data-lang="settings-title">Configurações</h2>
+            
+            <div class="flex justify-between items-center border-b pb-4 border-main">
+                <label for="theme-toggle" class="text-lg font-medium text-primary" data-lang="theme-label">Tema Escuro</label>
+                <input type="checkbox" id="theme-toggle" class="toggle toggle-lg bg-main checked:bg-brand-primary">
+            </div>
+
+            <div class="flex justify-between items-center border-b pb-4 border-main">
+                <label for="lang-select" class="text-lg font-medium text-primary" data-lang="language-label">Idioma</label>
+                <select id="lang-select" class="p-2 border border-main rounded-lg bg-primary text-primary">
+                    <option value="pt">Português (PT)</option>
+                    <option value="en">English (EN)</option>
+                </select>
+            </div>
+            
+            ${state.user ? `
+            <button id="logout-button" class="w-full py-3 px-4 rounded-xl text-lg font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors duration-300" data-lang="logout-button-settings">
+                Sair
+            </button>` : ''}
+        </div>
+    `;
+    
+    const themeToggle = document.getElementById('theme-toggle');
+    themeToggle.checked = document.documentElement.classList.contains('dark');
+    themeToggle.addEventListener('change', (e) => applyTheme(e.target.checked));
+
+    const langSelect = document.getElementById('lang-select');
+    langSelect.value = state.currentLanguage;
+    langSelect.addEventListener('change', (e) => {
+        setLanguage(e.target.value);
+        if (state.user) renderHomeScreen(); 
+        renderSettingsScreen(); 
+    });
+
+    const logoutButton = document.getElementById('logout-button');
+    if (logoutButton) logoutButton.addEventListener('click', handleLogout);
+
+    setLanguage(state.currentLanguage);
+}
+
+function renderAdminScreen() {
+    // A estrutura da tela admin está no HTML, apenas injetamos a lista de produtos
+    resetProductForm(); // Garante que o formulário está limpo ao entrar
+    
+    UI.adminProductList.innerHTML = '';
+
+    if (state.products.length === 0) {
+        UI.noProductsMessage.classList.remove('hidden');
     } else {
-        loginSection.classList.remove('hidden');
-        mainAppSection.classList.add('hidden');
-        screenHistory = [];
+        UI.noProductsMessage.classList.add('hidden');
+        state.products.forEach(product => {
+            UI.adminProductList.innerHTML += `
+                <tr class="hover:bg-primary/50 transition-colors duration-200">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <img class="h-10 w-10 rounded-full object-cover mr-4" src="${product.imageUrl || 'https://placehold.co/100x100?text=P'}" alt="${product.name}">
+                            <div class="text-sm font-medium text-primary">${product.name}</div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary">${CONFIG.CURRENCY_SYMBOL} ${product.price.toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                        <button onclick="editProduct('${product.id}')" class="text-blue-600 hover:text-blue-900 transition-colors duration-200">Editar</button>
+                        <button onclick="deleteProduct('${product.id}')" class="text-red-600 hover:text-red-900 transition-colors duration-200">Excluir</button>
+                    </td>
+                </tr>
+            `;
+        });
     }
 
-    applyTheme();
-    languageSelect.value = currentLanguage;
-    applyTranslations();
-    
-    loadProducts(); 
+    setLanguage(state.currentLanguage);
+}
 
-});
+
+// ====================================================================
+// Módulo Principal da Aplicação e Eventos
+// ====================================================================
+
+function setupEventListeners() {
+    // Formulário de Login/Registro
+    if (UI.registrationForm) UI.registrationForm.addEventListener('submit', handleRegistration);
+    if (UI.profilePictureInput) UI.profilePictureInput.addEventListener('change', handleProfilePictureChange);
+
+    // Navegação
+    if (UI.backButton) UI.backButton.addEventListener('click', goBack);
+    if (UI.settingsButton) UI.settingsButton.addEventListener('click', () => navigateToScreen('settings'));
+    
+    // Carrinho
+    if (UI.cartButton) UI.cartButton.addEventListener('click', openCartModal);
+    if (UI.closeCartButton) UI.closeCartButton.addEventListener('click', closeCartModal);
+    if (UI.checkoutButton) UI.checkoutButton.addEventListener('click', openOrderConfirmModal);
+
+    // Confirmação de Pedido
+    if (UI.cancelOrderButton) UI.cancelOrderButton.addEventListener('click', closeOrderConfirmModal);
+    if (UI.sendOrderWhatsappButton) UI.sendOrderWhatsappButton.addEventListener('click', sendOrderViaWhatsApp);
+
+    // Admin
+    if (UI.adminButton) {
+        UI.adminButton.addEventListener('click', () => {
+            if (state.isAdmin) {
+                navigateToScreen('admin');
+            } else {
+                UI.adminLoginModal.classList.remove('hidden');
+                setTimeout(() => UI.adminLoginModal.classList.remove('opacity-0'), 10);
+            }
+        });
+    }
+    if (UI.adminLoginForm) UI.adminLoginForm.addEventListener('submit', handleAdminLogin);
+    if (UI.closeAdminModalButton) UI.closeAdminModalButton.addEventListener('click', closeAdminModal);
+    
+    // Admin CRUD Listeners
+    if (UI.productForm) UI.productForm.addEventListener('submit', handleProductSubmit);
+    if (UI.cancelEditButton) UI.cancelEditButton.addEventListener('click', resetProductForm);
+
+    // Torna as funções globais para uso no HTML inline (ex: onclick)
+    window.navigateToScreen = navigateToScreen;
+    window.addToCart = addToCart;
+    window.removeFromCart = removeFromCart;
+    window.updateCartItemQuantity = updateCartItemQuantity;
+    window.editProduct = editProduct;
+    window.deleteProduct = deleteProduct;
+}
+
+async function initializeAppUI() {
+    UI.loginSection.classList.add('hidden');
+    UI.mainAppSection.classList.remove('hidden');
+    
+    await fetchProducts(); 
+    
+    state.navigationHistory = ['home'];
+    navigateToScreen('home');
+
+    updateCartUI();
+    updateAdminButtonVisibility();
+}
+
+function initializeApp() {
+    if (!window.db) {
+        console.error("Firebase não inicializado.");
+        document.body.innerHTML = "<h1>Erro Crítico: A conexão com o banco de dados falhou.</h1>";
+        return;
+    }
+    
+    initializeTheme();
+    setupEventListeners();
+    setLanguage(state.currentLanguage); // Aplica as traduções
+
+    if (state.user) {
+        initializeAppUI();
+    } else {
+        UI.loginSection.classList.remove('hidden');
+        UI.mainAppSection.classList.add('hidden');
+        state.navigationHistory = [];
+        UI.backButton.classList.add('hidden');
+    }
+};
+
+// Inicia a aplicação quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', initializeApp);

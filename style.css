@@ -1,18 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* style.css */
 
-body {
-    font-family: 'Inter', sans-serif;
-    background-color: #f3f4f6;
+/* Definição das variáveis de cor no tema claro */
+:root {
+    --color-primary: #ffffff;      /* Fundo principal (claro) */
+    --color-secondary: #f3f4f6;    /* Fundo secundário, cards, modais (claro) */
+    --color-text-primary: #1f2937; /* Texto principal (escuro) */
+    --color-text-secondary: #6b7280; /* Texto secundário (cinza) */
+    --color-brand-primary: #ef4444; /* Vermelho/Marca principal */
+    --color-brand-hover: #dc2626;  /* Vermelho mais escuro para hover */
+    --color-border-main: #d1d5db;  /* Borda/Linha de separação */
 }
 
-/* Cores da sua marca */
-.bg-brand-primary { background-color: #ba7d88; }
-.hover\:bg-brand-hover:hover { background-color: #65081e; }
-.text-brand-primary { color: lch(20.18% 42.12 19.82); }
-.focus\:ring-brand-primary:focus { --tw-ring-color: #ba7d88; }
+/* Definição das variáveis de cor no tema escuro */
+.dark {
+    --color-primary: #111827;      /* Fundo principal (escuro) */
+    --color-secondary: #1f2937;    /* Fundo secundário, cards, modais (escuro) */
+    --color-text-primary: #f3f4f6; /* Texto principal (claro) */
+    --color-text-secondary: #9ca3af; /* Texto secundário (cinza claro) */
+    --color-brand-primary: #f87171; /* Vermelho/Marca principal */
+    --color-brand-hover: #ef4444;  /* Vermelho mais escuro para hover */
+    --color-border-main: #374151;  /* Borda/Linha de separação */
+}
 
-/* Cores para o modo escuro */
-.dark .text-brand-light { color: #ba7d88; }
-.dark .bg-brand-light { background-color: #ba7d88; }
-.dark .hover\:bg-brand-primary:hover { background-color: #65081e; }
-.dark .focus\:ring-brand-light:focus { --tw-ring-color: #ba7d88; }
+/* Mapeamento das classes do Tailwind para as variáveis */
+.bg-primary { background-color: var(--color-primary); }
+.text-primary { color: var(--color-text-primary); }
+.bg-secondary { background-color: var(--color-secondary); }
+.text-secondary { color: var(--color-text-secondary); }
+.border-main { border-color: var(--color-border-main); }
+.text-brand-primary { color: var(--color-brand-primary); }
+.bg-brand-primary { background-color: var(--color-brand-primary); }
+.hover\:bg-brand-hover:hover { background-color: var(--color-brand-hover); }
+
+/* Para a animação do cart modal */
+#cart-panel {
+    transition: transform 0.3s ease-out;
+}
