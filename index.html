@@ -1,26 +1,26 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0ea5a4">
     <title data-lang="app-title">Nó&Laço - Loja Online</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <link rel="stylesheet" href="style.css">
-    
-    <script>
-        // Configuração do Tailwind para o modo escuro funcionar com a classe 'dark'
-        tailwind.config = {
-            darkMode: 'class',
-        }
-    </script>
-</head>
-<body class="bg-primary text-primary transition-colors duration-300 min-h-screen">
 
-    <div id="loading-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-[100] flex items-center justify-center transition-opacity duration-300 opacity-0">
+    <!-- Tailwind CDN (dev) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="style.css">
+
+</head>
+<body class="bg-primary text-primary transition-colors duration-300 min-h-screen antialiased">
+
+    <!-- Skip link for accessibility -->
+    <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-white text-brand-primary px-3 py-2 rounded-lg shadow">Pular para o conteúdo</a>
+
+    <!-- Loading modal (hidden by default) -->
+    <div id="loading-modal" role="status" aria-live="polite" aria-hidden="true" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300 hidden opacity-0">
         <div class="flex flex-col items-center bg-secondary p-6 rounded-xl shadow-2xl">
-            <svg class="animate-spin h-8 w-8 text-brand-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin h-8 w-8 text-brand-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
@@ -28,110 +28,247 @@
         </div>
     </div>
 
-    <div id="notification-message" class="hidden fixed bottom-6 right-6 p-4 text-white rounded-xl shadow-lg transition-all duration-300 transform translate-x-full opacity-0 z-[60]"></div>
+    <!-- Notification toast (hidden by default) -->
+    <div id="notification-message" role="status" aria-live="polite" class="hidden fixed bottom-6 right-6 p-4 text-white rounded-xl shadow-lg transition-all duration-300 transform translate-x-full opacity-0 z-[60]"></div>
 
+    <!-- LOGIN / REGISTRATION -->
     <section id="login-section" class="flex items-center justify-center min-h-screen p-4">
         <div class="w-full max-w-md bg-secondary p-8 rounded-xl shadow-2xl">
             <div class="flex justify-center mb-6">
-                <img id="app-logo" src="https://static.wixstatic.com/media/2e4892_c358e7916538488d8477ce001aacaf68~mv2.png" alt="Logo da Nó&Laço" class="w-24 h-24 object-contain rounded-lg">
+                <img id="app-logo" src="https://i.postimg.cc/02GzvJCv/Logo-01-2-01.png" alt="Logo da Nó&Laço" class="w-24 h-24 object-contain rounded-lg">
             </div>
-            
-            <h1 data-lang="login-title" class="text-3xl font-extrabold text-center text-brand-primary mb-6">Cadastre-se para Comprar!</h1>
-            <form id="registration-form" class="space-y-5">
+
+            <h1 data-lang="login-title" class="text-3xl font-extrabold text-center text-brand-primary mb-6">Registe-se para Comprar!</h1>
+            <form id="registration-form" class="space-y-5" novalidate>
                 <div class="text-center">
                     <label data-lang="profile-picture-label" class="block text-sm font-medium text-secondary mb-2">Foto de Perfil</label>
-                    
-                    <label for="profile-picture" id="profile-picture-upload-area" class="w-24 h-24 mx-auto rounded-full bg-primary flex items-center justify-center cursor-pointer border-4 border-dashed border-main hover:border-brand-primary transition-colors duration-300">
-                        <input type="file" id="profile-picture" accept="image/*" class="hidden">
-                        <svg id="default-profile-icon" xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-4-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+
+                    <div id="profile-picture-upload-area" class="w-32 h-32 rounded-full border-4 border-dashed border-main mx-auto relative overflow-hidden cursor-pointer">
+                        <input type="file" id="profile-picture" class="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" aria-label="Carregar foto de perfil">
+
                         <div id="profile-preview-container" class="hidden w-full h-full">
-                            <img id="profile-preview" class="w-full h-full object-cover rounded-full" alt="Pré-visualização">
+                            <img id="profile-preview" src="" alt="Pré-visualização" class="w-full h-full object-cover rounded-full">
                         </div>
-                    </label>
-                    <p id="profile-picture-text" class="text-xs mt-2 text-secondary" data-lang="upload-photo">Carregar uma foto</p>
+
+                        <div id="default-profile-icon" class="w-full h-full flex flex-col justify-center items-center text-secondary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-4-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            <span id="profile-picture-text" class="text-xs mt-1" data-lang="upload-photo">Carregar uma foto</span>
+                        </div>
+                    </div>
                 </div>
-                
+
                 <div>
                     <label for="full-name" data-lang="full-name-label" class="block text-sm font-medium text-secondary">Nome Completo</label>
-                    <input type="text" id="full-name" required class="mt-1 block w-full px-4 py-2 border border-main rounded-xl shadow-sm focus:ring-brand-primary focus:border-brand-primary bg-primary text-primary transition-colors">
+                    <input type="text" id="full-name" name="full-name" required class="mt-1 block w-full px-4 py-2 border border-main rounded-xl shadow-sm focus:ring-brand-primary focus:border-brand-primary bg-primary text-primary transition-colors" autocomplete="name">
                 </div>
-                
+
                 <div>
                     <label for="phone-number" data-lang="phone-number-label" class="block text-sm font-medium text-secondary">Número de Telefone</label>
-                    <input type="tel" id="phone-number" required class="mt-1 block w-full px-4 py-2 border border-main rounded-xl shadow-sm focus:ring-brand-primary focus:border-brand-primary bg-primary text-primary transition-colors">
+                    <input type="tel" id="phone-number" name="phone-number" required class="mt-1 block w-full px-4 py-2 border border-main rounded-xl shadow-sm focus:ring-brand-primary focus:border-brand-primary bg-primary text-primary transition-colors" value="258" placeholder="8X XXX XXXX" maxlength="12" inputmode="tel" autocomplete="tel">
                 </div>
 
                 <button type="submit" data-lang="login-button" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-brand-primary hover:bg-brand-hover transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary">
-                    Entrar
+                    Entrar/Registrar
                 </button>
             </form>
         </div>
     </section>
 
+    <!-- MAIN APP SECTION (hidden until login) -->
     <section id="main-app-section" class="hidden">
-        
-        <header class="sticky top-0 z-40 bg-secondary/80 backdrop-blur-sm shadow-lg">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-        
-        <div class="flex items-center space-x-4">
-            <button id="back-button" class="text-secondary hover:text-brand-primary transition-transform duration-300 transform hover:scale-110 hidden" aria-label="Voltar">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-            </button>
-            <h1 data-lang="app-brand" class="text-2xl font-bold text-brand-primary">Nó&Laço</h1>
-        </div>
 
-        <div class="flex items-center space-x-2 sm:space-x-4">
-            
-            <div class="relative hidden sm:block">
-                <input type="text" id="search-input" placeholder="Buscar produtos..." data-lang="search-placeholder" class="py-2 pl-10 pr-4 border border-main rounded-full bg-primary text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+        <header class="sticky top-0 z-40 bg-secondary shadow-md">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+
+                <div class="flex items-center space-x-4">
+                    <button id="back-button" class="text-primary hover:text-brand-primary transition-transform duration-300 transform hover:scale-110 hidden" aria-label="Voltar">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    </button>
+
+                    <div id="user-profile-container" class="flex items-center space-x-2"> 
+                        <img id="user-profile-pic" src="https://placehold.co/100x100" alt="Perfil" class="w-12 h-12 rounded-full object-cover border-2 border-brand-primary">
+                        <span id="user-profile-name" class="text-base font-semibold text-primary"></span>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <div id="search-container" class="relative hidden sm:block"> 
+                        <input type="text" id="search-input" placeholder="Buscar produtos..." data-lang="search-placeholder" class="py-2 pl-10 pr-4 border border-main rounded-full bg-primary text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </div>
+
+                    <button id="cart-button" class="relative text-primary hover:text-brand-primary p-2 rounded-full" aria-label="Carrinho de Compras">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shopping-cart-icon lucide-shopping-cart" aria-hidden="true"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+                        <span id="cart-item-count" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 rounded-full bg-red-500">0</span>
+                    </button>
+
+                    <button id="admin-button" class="text-primary hover:text-brand-primary p-2 rounded-full hidden" aria-label="Admin">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-user-icon lucide-shield-user" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M6.376 18.91a6 6 0 0 1 11.249.003"/><circle cx="12" cy="11" r="4"/></svg>
+                    </button>
+
+                    <button id="settings-button" class="text-primary hover:text-brand-primary p-2 rounded-full" aria-label="Configurações">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings-icon lucide-settings" aria-hidden="true"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
             </div>
+        </header>
 
-            <button id="cart-button" class="relative text-secondary hover:text-brand-primary p-2 rounded-full" aria-label="Carrinho de Compras">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shopping-cart-icon lucide-shopping-cart"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
-                <span id="cart-item-count" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 rounded-full bg-red-500">0</span>
-            </button>
-            
-            <button id="admin-button" class="text-secondary hover:text-brand-primary p-2 rounded-full" aria-label="Admin">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-user-icon lucide-shield-user"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M6.376 18.91a6 6 0 0 1 11.249.003"/><circle cx="12" cy="11" r="4"/></svg>
-            </button>
+        <main id="main" class="max-w-7xl mx-auto p-4 sm:p-6 relative">
 
-            <button id="settings-button" class="text-secondary hover:text-brand-primary p-2 rounded-full" aria-label="Configurações">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings-icon lucide-settings"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
+            <!-- HOME SCREEN -->
+<section id="home-screen" class="screen space-y-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14">
+
+        <!-- HERO CARD -->
+        <div class="bg-brand-primary rounded-2xl shadow-xl overflow-hidden mb-10">
+            <div class="relative p-8 md:p-14 text-center">
+
+                <div class="absolute inset-0 bg-cover bg-center opacity-40 blur-[1px]"
+                    style="background-image: url('https://i.postimg.cc/prZKhNMX/Meu-App-24.png');">
+                </div>
+
+                <div class="relative z-10">
+                    <h2 class="text-3xl sm:text-5xl font-extrabold text-white drop-shadow-lg tracking-wide">
+                        Explore, Descubra, Compre
+                    </h2>
+
+                    <p class="text-white/90 text-lg mt-3">
+                        Navegue pelos nossos acessórios exclusivos.
+                    </p>
+
+                    <button id="view-all-products-button"
+                        class="mt-7 bg-white text-brand-primary text-lg font-semibold py-2.5 px-8 rounded-2xl shadow-lg transition-all duration-300 hover:bg-gray-100 hover:shadow-xl transform hover:scale-[1.04]"
+                        data-lang="view-all-products">
+                        Ver Todos os Produtos
+                    </button>
+                </div>
+            </div>
         </div>
+
+        <!-- TITLE -->
+        <div class="text-center mt-8">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-brand-primary drop-shadow-sm mb-2">
+                Bem-vindo à Nó&Laço!
+            </h1>
+            <p class="text-lg md:text-xl text-secondary tracking-wide">
+                A sua loja online de acessórios.
+            </p>
+        </div>
+
+        <!-- FEATURED -->
+        <section id="featured-products-section" class="mt-14">
+            <h2 data-lang="featured-title" 
+                class="text-3xl font-bold text-center mb-8 text-primary tracking-wide">
+                ✨ Destaques da Semana ✨
+            </h2>
+
+            <div id="featured-products-container" 
+                class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+                <p id="no-featured-message" 
+                   class="text-center text-secondary col-span-full hidden">
+                   Nenhum produto em destaque no momento.
+                </p>
+            </div>
+        </section>
+
     </div>
-</header>
+</section>
 
-        <main class="max-w-7xl mx-auto p-4 sm:p-6 relative">
-            
-            <section id="home-screen" class="screen space-y-12">
-                </section>
 
+            <!-- PRODUCTS -->
             <section id="products-screen" class="screen hidden">
-                </section>
+                <h2 data-lang="all-products-title" class="text-3xl font-bold mb-6 text-primary">Todos os Produtos</h2>
+                <div id="products-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
+            </section>
 
-            <section id="product-detail-screen" class="screen hidden">
-                </section>
+            <!-- PRODUCT DETAIL -->
+            <section id="product-detail-screen" class="screen hidden"></section>
 
+            <!-- PROFILE -->
+            <section id="profile-screen" class="screen hidden">
+                <div class="max-w-xl mx-auto bg-secondary p-8 rounded-xl shadow-2xl space-y-6">
+                    <h2 class="text-3xl font-bold text-center text-brand-primary" data-lang="profile-title">Meu Perfil</h2>
+
+                    <div class="flex flex-col items-center border-b pb-6 border-main">
+                        <img id="profile-pic-large" src="https://placehold.co/150x150" alt="Perfil" class="w-24 h-24 rounded-full object-cover border-4 border-brand-primary mb-3">
+                        <h3 id="profile-name-display" class="text-xl font-semibold text-primary">Nome do Usuário</h3>
+                    </div>
+
+                    <form id="profile-edit-form" class="space-y-4" novalidate>
+                        <div>
+                            <label for="profile-full-name" class="block text-sm font-medium text-secondary">Nome Completo</label>
+                            <input type="text" id="profile-full-name" required class="mt-1 block w-full p-3 border border-main rounded-lg bg-primary text-primary focus:ring-brand-primary focus:border-brand-primary" autocomplete="name">
+                        </div>
+                        <div>
+                            <label for="profile-phone-number" class="block text-sm font-medium text-secondary">Telefone (WhatsApp)</label>
+                            <input type="tel" id="profile-phone-number" required class="mt-1 block w-full p-3 border border-main rounded-lg bg-primary text-primary focus:ring-brand-primary focus:border-brand-primary" autocomplete="tel">
+                        </div>
+                        
+                        <button type="submit" id="save-profile-button" data-lang="save-profile-button"
+                                class="w-full py-3 px-4 rounded-xl text-lg font-semibold text-white bg-blue-500 hover:bg-blue-600 transition-colors">
+                            Salvar Alterações
+                        </button>
+                    </form>
+
+                    <div class="pt-6 border-t border-main">
+                         <h4 class="text-xl font-bold text-primary mb-3" data-lang="addresses-title">Meus Endereços</h4>
+                         <div id="saved-addresses-container" class="space-y-3">
+                             <p class="text-secondary" data-lang="no-addresses-msg">Nenhum endereço salvo.</p>
+                         </div>
+                         <button id="add-address-button" class="mt-4 w-full py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-hover transition-colors">
+                             + Adicionar Novo Endereço
+                         </button>
+                    </div>
+
+                    <button id="logout-profile-button" data-lang="logout-button-profile" class="w-full py-3 px-4 rounded-xl text-lg font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors duration-300 mt-6">
+                         Sair da Conta
+                    </button>
+                </div>
+            </section>
+
+            <!-- SETTINGS -->
             <section id="settings-screen" class="screen hidden">
-                </section>
+                <div class="max-w-xl mx-auto bg-secondary p-8 rounded-xl shadow-2xl space-y-6">
+                    <h2 data-lang="settings-title" class="text-3xl font-bold text-center text-brand-primary mb-6">Configurações</h2>
 
+                    <div class="flex items-center justify-between border-b border-main pb-4">
+                        <span data-lang="theme-label" class="text-lg font-medium text-primary">Modo Escuro</span>
+                        <button id="theme-toggle" class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none bg-gray-200 dark:bg-gray-700" aria-pressed="false">
+                            <span class="sr-only">Toggle dark mode</span>
+                            <span class="inline-block w-4 h-4 transform bg-white rounded-full transition ease-in-out duration-300 shadow-md translate-x-1 dark:translate-x-6"></span>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center justify-between border-b border-main pb-4">
+                        <label for="language-select" data-lang="language-label" class="text-lg font-medium text-primary">Idioma</label>
+                        <select id="language-select" class="py-1 px-3 border border-main rounded-xl bg-primary text-primary">
+                            <option value="pt-br">Português (Brasil)</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+
+                    <button id="logout-button" data-lang="logout-button" class="w-full py-3 px-4 rounded-xl text-lg font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors duration-300 mt-6">
+                        Sair da Conta
+                    </button>
+                </div>
+            </section>
+
+            <!-- ADMIN -->
             <section id="admin-screen" class="screen hidden">
                 <div class="max-w-4xl mx-auto bg-secondary p-8 rounded-xl shadow-2xl space-y-8">
                     <h2 id="admin-panel-title" data-lang="admin-panel-title" class="text-3xl font-bold text-center text-brand-primary">Painel de Administração</h2>
-                    
+
                     <div class="border-t pt-6 border-main">
                         <h3 id="product-form-title" class="text-2xl font-semibold mb-4 text-primary">Adicionar Novo Produto</h3>
-                        <form id="product-form" class="space-y-4">
-                            
+                        <form id="product-form" class="space-y-4" novalidate>
+
                             <input type="hidden" id="product-id">
 
                             <div>
                                 <label for="product-name" class="block text-sm font-medium text-secondary">Nome do Produto</label>
                                 <input type="text" id="product-name" required class="mt-1 block w-full px-4 py-2 border border-main rounded-xl focus:ring-brand-primary focus:border-brand-primary bg-primary text-primary">
                             </div>
-                            
+
                             <div>
                                 <label for="product-price" class="block text-sm font-medium text-secondary">Preço (MZN)</label>
                                 <input type="number" id="product-price" required min="0.01" step="0.01" class="mt-1 block w-full px-4 py-2 border border-main rounded-xl focus:ring-brand-primary focus:border-brand-primary bg-primary text-primary">
@@ -153,95 +290,144 @@
                             </div>
 
                             <div class="flex space-x-4">
-                                <button type="submit" id="submit-product-button" class="flex-1 py-3 px-4 rounded-xl text-lg font-semibold text-white bg-green-500 hover:bg-green-600 transition-colors duration-300">
+                                <button type="submit" id="submit-product-button" class="flex-1 py-3 px-4 rounded-xl text-lg font-semibold text-white bg-brand-primary hover:bg-brand-hover transition-colors duration-300">
                                     Adicionar Produto
                                 </button>
-                                <button type="button" id="cancel-edit-button" class="hidden py-3 px-4 rounded-xl text-lg font-semibold text-secondary bg-gray-300 hover:bg-gray-400 transition-colors duration-300">
-                                    Cancelar Edição
+                                <button type="button" id="cancel-edit-button" class="hidden py-3 px-4 rounded-xl text-lg font-semibold text-primary bg-main hover:bg-gray-400 transition-colors duration-300">
+                                Cancelar Edição
                                 </button>
                             </div>
                         </form>
                     </div>
 
                     <div class="border-t pt-6 border-main">
+                        <h3 id="featured-product-form-title" class="text-2xl font-semibold mb-4 text-brand-primary">Gerenciar Destaques</h3>
+                        <form id="featured-product-form" class="space-y-4" novalidate>
+
+                            <div>
+                                <label for="featured-product-id" class="block text-sm font-medium text-secondary">ID do Produto Existente</label>
+                                <input type="text" id="featured-product-id" placeholder="Ex: pdt-12345" required class="mt-1 block w-full px-4 py-2 border border-main rounded-xl focus:ring-brand-primary focus:border-brand-primary bg-primary text-primary">
+                                <p class="text-xs text-secondary mt-1">O ID do produto deve ser o mesmo cadastrado na seção acima.</p>
+                            </div>
+
+                            <button type="submit" id="submit-featured-product-button" class="w-full py-3 px-4 rounded-xl text-lg font-semibold text-white bg-green-500 hover:bg-green-600 transition-colors duration-300">
+                                Marcar/Remover Destaque
+                            </button>
+                        </form>
+                        <div id="featured-list" class="mt-4 space-y-2"></div>
+                    </div>
+
+                    <div class="border-t pt-6 border-main">
                         <h3 class="text-2xl font-semibold mb-4 text-primary">Produtos Existentes</h3>
+
+                        <div class="mb-4">
+                            <label for="admin-product-filter" class="text-sm font-medium text-secondary mr-2">Visualizar:</label>
+                            <select id="admin-product-filter" class="py-1 px-2 border border-main rounded-xl bg-primary text-primary">
+                                <option value="all">Todos os Produtos</option>
+                                <option value="visible">Apenas Visíveis</option>
+                                <option value="hidden">Apenas Ocultos</option>
+                            </select>
+                        </div>
+
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-main">
                                 <thead>
                                     <tr>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Produto</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Preço</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Status</th> 
                                         <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Ações</th>
                                     </tr>
                                 </thead>
-                                <tbody id="admin-product-list" class="bg-primary divide-y divide-main">
-                                    </tbody>
+                                <tbody id="admin-product-list" class="bg-primary divide-y divide-main"></tbody>
                             </table>
                             <p id="no-products-message" class="text-center text-secondary py-4 hidden">Nenhum produto cadastrado.</p>
                         </div>
                     </div>
                 </div>
             </section>
+
+            <!-- CART MODAL -->
+            <div id="cart-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 transition-opacity duration-300 opacity-0 flex justify-end" aria-hidden="true" role="dialog" aria-modal="true">
+                <div id="cart-panel" class="bg-secondary w-full md:w-96 h-full p-6 shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col justify-between">
+
+                    <div class="flex justify-between items-center border-b pb-4 mb-4 border-main flex-shrink-0">
+                        <h2 data-lang="your-cart-title" class="text-2xl font-bold text-primary">Seu Carrinho</h2>
+                        <button id="close-cart-button" class="text-primary hover:text-red-500 p-1 rounded-full" aria-label="Fechar Carrinho">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+
+                    <div id="cart-items" class="space-y-4 overflow-y-auto flex-grow mb-4">
+                        <p id="empty-cart-message" class="text-center text-secondary py-4">O carrinho está vazio.</p>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-main flex-shrink-0">
+                        <label for="delivery-address-input" class="block text-sm font-semibold text-primary mb-2" data-lang="address-label">Confirme sua localização para a entrega</label>
+                        <input type="text" id="delivery-address-input" placeholder="Rua, Bairro, Cidade" class="w-full p-2 border border-main rounded-lg bg-primary text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary">
+                    </div>
+
+                    <div class="border-t pt-4 border-main flex-shrink-0">
+                        <div class="flex justify-between font-bold text-lg mb-4 text-primary">
+                            <span data-lang="total-label">Total:</span>
+                            <span id="cart-total" class="text-brand-primary">MZN 0.00</span>
+                        </div>
+                        <button id="checkout-button" data-lang="checkout-button" class="w-full bg-green-500 text-white font-semibold py-3 rounded-xl hover:bg-green-600 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            Finalizar Compra
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ORDER CONFIRM -->
+            <div id="order-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 transition-opacity duration-300 opacity-0 flex items-center justify-center p-4" aria-hidden="true" role="dialog" aria-modal="true">
+                <div class="bg-secondary p-8 rounded-xl shadow-2xl w-full max-w-sm text-center transform scale-95 transition-transform duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-green-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <h3 data-lang="confirm-order-title" class="text-xl font-bold mb-3 text-primary">Confirmar Pedido</h3>
+                    <p data-lang="confirm-order-message" class="text-secondary mb-6">Seu pedido será enviado via WhatsApp para a finalização e confirmação dos detalhes. Continuar?</p>
+                    <div class="flex justify-center space-x-4">
+                        <button id="cancel-order-button" data-lang="cancel-button" class="py-2 px-6 border border-main rounded-xl text-primary hover:bg-primary transition-colors duration-300">Cancelar</button>
+                        <button id="send-order-whatsapp-button" data-lang="whatsapp-send-button" class="py-2 px-6 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors duration-300">Enviar por WhatsApp</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMIN LOGIN MODAL -->
+            <div id="admin-login-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 transition-opacity duration-300 opacity-0 flex items-center justify-center p-4" aria-hidden="true" role="dialog" aria-modal="true">
+                <div class="bg-secondary p-8 rounded-xl shadow-2xl w-full max-w-sm transform scale-95 transition-transform duration-300">
+                    <div class="text-right -mt-4 -mr-4">
+                        <button id="close-admin-modal-button" class="text-primary hover:text-red-500 p-2 rounded-full" aria-label="Fechar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <h3 data-lang="admin-access-title" class="text-xl font-bold mb-6 text-center text-brand-primary">Acesso de Administrador</h3>
+                    <form id="admin-login-form" class="space-y-4" novalidate>
+                        <div>
+                            <label for="admin-code" data-lang="admin-code-label" class="block text-sm font-medium text-secondary">Código Secreto</label>
+                            <input type="password" id="admin-code" required class="mt-1 block w-full px-4 py-2 border border-main rounded-xl focus:ring-brand-primary focus:border-brand-primary bg-primary text-primary">
+                        </div>
+                        <button type="submit" data-lang="login-button" class="w-full py-2 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-brand-primary hover:bg-brand-hover">
+                            Entrar
+                        </button>
+                    </form>
+                </div>
+            </div>
+
         </main>
     </section>
 
-    <div id="cart-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 transition-opacity duration-300 opacity-0 flex justify-end">
-        <div id="cart-panel" class="bg-secondary w-full md:w-96 h-full p-6 shadow-2xl transform translate-x-full transition-transform duration-300">
-            <div class="flex justify-between items-center border-b pb-4 mb-6 border-main">
-                <h2 data-lang="your-cart-title" class="text-2xl font-bold">Seu Carrinho</h2>
-                <button id="close-cart-button" class="text-secondary hover:text-red-500 p-1 rounded-full" aria-label="Fechar Carrinho">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-            </div>
-            <div id="cart-items" class="space-y-4 overflow-y-auto h-[calc(100%-150px)] mb-4">
-                </div>
-            <div class="border-t pt-4 border-main">
-                <div class="flex justify-between font-bold text-lg mb-4">
-                    <span data-lang="total-label">Total:</span>
-                    <span id="cart-total" class="text-brand-primary">MZN 0.00</span>
-                </div>
-                <button id="checkout-button" data-lang="checkout-button" class="w-full bg-green-500 text-white font-semibold py-3 rounded-xl hover:bg-green-600 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                    Finalizar Compra
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="order-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 transition-opacity duration-300 opacity-0 flex items-center justify-center p-4">
-        <div class="bg-secondary p-8 rounded-xl shadow-2xl w-full max-w-sm text-center transform scale-95 transition-transform duration-300">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-green-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <h3 data-lang="confirm-order-title" class="text-xl font-bold mb-3">Confirmar Pedido</h3>
-            <p data-lang="confirm-order-message" class="text-secondary mb-6">Seu pedido será enviado via WhatsApp. Continuar?</p>
-            <div class="flex justify-center space-x-4">
-                <button id="cancel-order-button" data-lang="cancel-button" class="py-2 px-6 border border-main rounded-xl text-secondary hover:bg-primary transition-colors duration-300">Cancelar</button>
-                <button id="send-order-whatsapp-button" data-lang="whatsapp-send-button" class="py-2 px-6 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors duration-300">Enviar por WhatsApp</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="admin-login-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 transition-opacity duration-300 opacity-0 flex items-center justify-center p-4">
-        <div class="bg-secondary p-8 rounded-xl shadow-2xl w-full max-w-sm transform scale-95 transition-transform duration-300">
-            <div class="text-right -mt-4 -mr-4">
-                <button id="close-admin-modal-button" class="text-secondary hover:text-red-500 p-2 rounded-full" aria-label="Fechar">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-            </div>
-            <h3 data-lang="admin-access-title" class="text-xl font-bold mb-6 text-center">Acesso de Administrador</h3>
-            <form id="admin-login-form" class="space-y-4">
-                <div>
-                    <label for="admin-code" data-lang="admin-code-label" class="block text-sm font-medium text-secondary">Código Secreto</label>
-                    <input type="password" id="admin-code" required class="mt-1 block w-full px-4 py-2 border border-main rounded-xl focus:ring-brand-primary focus:border-brand-primary bg-primary text-primary">
-                </div>
-                <button type="submit" data-lang="login-button" class="w-full py-2 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-brand-primary hover:bg-brand-hover">
-                    Entrar
-                </button>
-            </form>
-        </div>
-    </div>
-    
+    <!-- Firebase and app initialization -->
     <script type="module">
+        // Importações do Firebase SDK v9 (Module Mode)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        import { getFirestore, collection, doc, getDoc, setDoc, query, orderBy, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, query, orderBy, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-storage.js";
+
+        // Export minimal helpers to window (mantendo seu código atual disponível)
+        window.firebase = {
+            collection, doc, getDoc, setDoc, updateDoc, query, orderBy, getDocs, deleteDoc,
+            getStorage, ref, uploadBytes, getDownloadURL
+        };
 
         // Substitua pelas suas chaves de configuração!
         const firebaseConfig = {
@@ -249,7 +435,7 @@
             authDomain: "no-e-laco.firebaseapp.com",
             databaseURL: "https://no-e-laco-default-rtdb.firebaseio.com",
             projectId: "no-e-laco",
-            storageBucket: "no-e-laco.appspot.com", 
+            storageBucket: "no-e-laco.appspot.com",
             messagingSenderId: "591421957305",
             appId: "1:591421957305:web:eed983637ce202c5b62768",
             measurementId: "G-EK61EY3ZTN"
@@ -257,21 +443,23 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const storage = getStorage(app); // Inicializa o Storage
 
-        // Exporta tudo para o escopo global para o script.js usar
+        // Exporta para o escopo global para o script.js usar
         window.db = db;
-        window.firebase = {
-            collection,
-            doc,
-            getDoc,
-            setDoc,
-            query,
-            orderBy,
-            getDocs,
-            deleteDoc // Adicionado para CRUD
-        };
+        window.storage = storage;
+
+        // Garantir que initApp (no script.js) seja chamado quando a página estiver pronta
+        window.addEventListener('load', () => {
+            if (typeof initApp === 'function') {
+                initApp();
+            }
+        });
+
     </script>
 
-    <script src="script.js"></script>
+    <!-- App script (carregado com defer para evitar execução antes do DOM) -->
+    <script src="script.js" defer></script>
+
 </body>
 </html>

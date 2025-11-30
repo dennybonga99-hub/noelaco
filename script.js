@@ -1,32 +1,41 @@
 // ====================================================================
-// Módulo de Configuração e Estado Global
+// Nó&Laço - app.js (versão corrigida e funcional)
 // ====================================================================
 
+// ====================================================================
+// Módulo de Configuração e Estado Global
+// ====================================================================
 const CONFIG = {
     CLOUDINARY_CLOUD_NAME: 'ddjpvbggk',
     CLOUDINARY_UPLOAD_PRESET: 'nodelaco_preset',
-    ADMIN_WHATSAPP_NUMBER: '258878384914', // Sem o + para o link do WhatsApp
+    ADMIN_WHATSAPP_NUMBER: '258878384914',
     INSECURE_ADMIN_CODE: '669900',
     CURRENCY_SYMBOL: 'MZN',
+    VALID_MZ_PREFIXES: ['82', '83', '84', '85', '86', '87'],
 };
 
 const state = {
     user: JSON.parse(localStorage.getItem('currentUser')) || null,
-    isAdmin: localStorage.getItem('isAdmin') === 'true',
+
+    get isAdmin() {
+        return this.user && this.user.role === 'admin';
+    },
+
     cart: JSON.parse(localStorage.getItem('cart')) || [],
     products: [],
     currentLanguage: localStorage.getItem('appLang') || 'pt',
     navigationHistory: [],
     profilePictureFile: null,
-    productToEdit: null, // Novo estado para o admin CRUD
+    productToEdit: null,
+    originalImageFile: null,
+    imageSettings: { maxWidth: 800, quality: 0.85 },
+    lastScrollPosition: 0,
 };
 
 // ====================================================================
-// Módulo de Seletores de UI
+// Módulo de Seletores de UI (referências atualizadas)
 // ====================================================================
-
 const UI = {
-    // Globais
     loadingModal: document.getElementById('loading-modal'),
     loadingMessage: document.getElementById('loading-message'),
     notificationMessage: document.getElementById('notification-message'),
@@ -34,67 +43,113 @@ const UI = {
     mainAppSection: document.getElementById('main-app-section'),
     backButton: document.getElementById('back-button'),
 
-    // Formulário de Login/Registro
+    cartButton: document.getElementById('cart-button'),
+    cartItemCount: document.getElementById('cart-item-count'),
+    adminButton: document.getElementById('admin-button'),
+    settingsButton: document.getElementById('settings-button'),
+    searchInput: document.getElementById('search-input'),
+
+    userProfilePic: document.getElementById('user-profile-pic'),
+    userProfileName: document.getElementById('user-profile-name'),
+
     registrationForm: document.getElementById('registration-form'),
     profilePictureInput: document.getElementById('profile-picture'),
     defaultProfileIcon: document.getElementById('default-profile-icon'),
     profilePreviewContainer: document.getElementById('profile-preview-container'),
     profilePreview: document.getElementById('profile-preview'),
 
-    // Header/Navegação
-    cartButton: document.getElementById('cart-button'),
-    cartItemCount: document.getElementById('cart-item-count'),
-    adminButton: document.getElementById('admin-button'),
-    settingsButton: document.getElementById('settings-button'), 
-    searchBar: document.getElementById('search-input'), 
-
-    // Telas (Screens)
     screens: {
-        'home': document.getElementById('home-screen'),
-        'products': document.getElementById('products-screen'),
+        home: document.getElementById('home-screen'),
+        products: document.getElementById('products-screen'),
         'product-detail': document.getElementById('product-detail-screen'),
-        'settings': document.getElementById('settings-screen'),
-        'admin': document.getElementById('admin-screen'),
+        settings: document.getElementById('settings-screen'),
+        admin: document.getElementById('admin-screen'),
+        profile: document.getElementById('profile-screen'),
     },
-    productGrid: null, 
+
+    productGrid: document.getElementById('product-grid'),
     productDetailContent: document.getElementById('product-detail-screen'),
 
-    // Modal do Carrinho
+    orderHistoryContainer: document.getElementById('order-history-container'),
+    noOrdersMessage: document.getElementById('no-orders-message'),
+
+    profilePicLarge: document.getElementById('profile-pic-large'),
+    profileNameDisplay: document.getElementById('profile-name-display'),
+    profileEditForm: document.getElementById('profile-edit-form'),
+    profileFullNameInput: document.getElementById('profile-full-name'),
+    profilePhoneNumberInput: document.getElementById('profile-phone-number'),
+    saveProfileButton: document.getElementById('save-profile-button'),
+    logoutProfileButton: document.getElementById('logout-profile-button'),
+    savedAddressesContainer: document.getElementById('saved-addresses-container'),
+    addAddressButton: document.getElementById('add-address-button'),
+
     cartModal: document.getElementById('cart-modal'),
     cartPanel: document.getElementById('cart-panel'),
-    closeCartButton: document.getElementById('close-cart-button'),
-    cartItemsContainer: document.getElementById('cart-items'), 
-    cartTotal: document.getElementById('cart-total'),
     checkoutButton: document.getElementById('checkout-button'),
+    deliveryAddressInput: document.getElementById('delivery-address-input'),
+    closeCartButton: document.getElementById('close-cart-button'),
+    cartItemsContainer: document.getElementById('cart-items'),
+    cartTotal: document.getElementById('cart-total'),
 
-    // Modal de Confirmação
     orderConfirmModal: document.getElementById('order-confirm-modal'),
     cancelOrderButton: document.getElementById('cancel-order-button'),
     sendOrderWhatsappButton: document.getElementById('send-order-whatsapp-button'),
 
-    // Modal de Admin
     adminLoginModal: document.getElementById('admin-login-modal'),
     adminLoginForm: document.getElementById('admin-login-form'),
     closeAdminModalButton: document.getElementById('close-admin-modal-button'),
-    
-    // Admin CRUD UI (Adicionado)
-    adminPanelTitle: document.getElementById('admin-panel-title'),
-    productFormTitle: document.getElementById('product-form-title'),
-    productForm: document.getElementById('product-form'),
-    productIdInput: document.getElementById('product-id'),
-    productNameInput: document.getElementById('product-name'),
-    productPriceInput: document.getElementById('product-price'),
-    productCategoryInput: document.getElementById('product-category'),
-    productDescriptionInput: document.getElementById('product-description'),
-    productImageInput: document.getElementById('product-image'),
-    submitProductButton: document.getElementById('submit-product-button'),
-    cancelEditButton: document.getElementById('cancel-edit-button'),
-    adminProductList: document.getElementById('admin-product-list'),
-    noProductsMessage: document.getElementById('no-products-message'),
+
+    // referências que serão atualizadas quando renderAdminScreen montar o DOM:
+    adminPanelTitle: null,
+    productFormTitle: null,
+    productForm: null,
+    productIdInput: null,
+    productNameInput: null,
+    productPriceInput: null,
+    productCategoryInput: null,
+    productDescriptionInput: null,
+    productImageInput: null,
+    productFeatured: null,
+    submitProductButton: null,
+    cancelEditButton: null,
+    adminProductList: null,
+    noProductsMessage: null,
 };
 
 // ====================================================================
-// Módulo de Traduções e Utilitários (Funções genéricas)
+// Verificação de Estrutura do DOM
+// ====================================================================
+function verifyDOMStructure() {
+    const requiredElements = [
+        'home-screen',
+        'products-screen',
+        'product-detail-screen',
+        'settings-screen',
+        'admin-screen',
+        'profile-screen',
+        'featured-products-container',
+        'no-featured-message',
+    ];
+
+    const missingElements = [];
+
+    requiredElements.forEach(elementId => {
+        if (!document.getElementById(elementId)) {
+            missingElements.push(elementId);
+        }
+    });
+
+    if (missingElements.length > 0) {
+        console.error('⚠️ ELEMENTOS FALTANDO NO HTML:', missingElements);
+        return false;
+    }
+
+    console.log('✅ Estrutura do DOM verificada com sucesso!');
+    return true;
+}
+
+// ====================================================================
+// Traduções e Utilitários
 // ====================================================================
 const translations = {
     pt: {
@@ -118,7 +173,7 @@ const translations = {
         'admin-code-label': 'Código Secreto',
         'app-brand': 'Nó&Laço',
         'home-welcome': 'Bem-vindo à Nó&Laço!',
-        'home-subtitle': 'A sua loja online de acessórios. Escolha a sua categoria favorita e comece a comprar!',
+        'home-subtitle': 'A sua loja online de acessórios.',
         'view-products-btn': 'Ver Todos os Produtos',
         'add-to-cart-btn': 'Adicionar ao Carrinho',
         'product-details-title': 'Detalhes do Produto',
@@ -127,12 +182,17 @@ const translations = {
         'theme-label': 'Tema Escuro',
         'language-label': 'Idioma',
         'logout-button-settings': 'Sair',
-        // ADMIN CRUD TRADUÇÕES
-        'add-new-product-title': 'Adicionar Novo Produto', 
-        'edit-product-title': 'Editar Produto', 
-        'add-product-button': 'Adicionar Produto', 
-        'save-changes-button': 'Salvar Alterações', 
-        'confirm-delete-product': 'Tem certeza que deseja excluir este produto?', 
+        'add-new-product-title': 'Adicionar Novo Produto',
+        'edit-product-title': 'Editar Produto',
+        'add-product-button': 'Adicionar Produto',
+        'save-changes-button': 'Salvar Alterações',
+        'confirm-delete-product': 'Tem certeza que deseja excluir este produto?',
+        'profile-title': 'Meu Perfil',
+        'save-profile-button': 'Salvar Alterações',
+        'addresses-title': 'Meus Endereços',
+        'no-addresses-msg': 'Nenhum endereço salvo.',
+        'logout-button-profile': 'Sair da Conta',
+        'address-label': 'Confirme sua localização para a entrega',
     },
     en: {
         'app-title': 'Nó&Laço - Online Store',
@@ -148,14 +208,14 @@ const translations = {
         'total-label': 'Total:',
         'checkout-button': 'Checkout',
         'confirm-order-title': 'Confirm Order',
-        'confirm-order-message': 'Your order will be sent via WhatsApp for finalization and detail confirmation. Continue?',
+        'confirm-order-message': 'Your order will be sent via WhatsApp for finalization. Continue?',
         'cancel-button': 'Cancel',
         'whatsapp-send-button': 'Send via WhatsApp',
         'admin-access-title': 'Admin Access',
         'admin-code-label': 'Secret Code',
         'app-brand': 'Nó&Laço',
         'home-welcome': 'Welcome to Nó&Laço!',
-        'home-subtitle': 'Your online accessories store. Choose your favorite category and start shopping!',
+        'home-subtitle': 'Your online accessories store.',
         'view-products-btn': 'View All Products',
         'add-to-cart-btn': 'Add to Cart',
         'product-details-title': 'Product Details',
@@ -164,12 +224,17 @@ const translations = {
         'theme-label': 'Dark Mode',
         'language-label': 'Language',
         'logout-button-settings': 'Logout',
-        // ADMIN CRUD TRADUÇÕES
-        'add-new-product-title': 'Add New Product', 
-        'edit-product-title': 'Edit Product', 
-        'add-product-button': 'Add Product', 
-        'save-changes-button': 'Save Changes', 
+        'add-new-product-title': 'Add New Product',
+        'edit-product-title': 'Edit Product',
+        'add-product-button': 'Add Product',
+        'save-changes-button': 'Save Changes',
         'confirm-delete-product': 'Are you sure you want to delete this product?',
+        'profile-title': 'My Profile',
+        'save-profile-button': 'Save Changes',
+        'addresses-title': 'My Addresses',
+        'no-addresses-msg': 'No saved addresses.',
+        'logout-button-profile': 'Logout',
+        'address-label': 'Confirm your delivery location',
     }
 };
 
@@ -192,8 +257,10 @@ function setLanguage(lang) {
 }
 
 function toggleLoading(show, messageKey = 'loading') {
+    if (!UI.loadingModal || !UI.loadingMessage) return;
+
     if (show) {
-        UI.loadingMessage.textContent = translations[state.currentLanguage][messageKey] || 'Loading...';
+        UI.loadingMessage.textContent = translations[state.currentLanguage][messageKey] || messageKey;
         UI.loadingModal.classList.remove('hidden', 'opacity-0');
         setTimeout(() => UI.loadingModal.classList.remove('opacity-0'), 10);
     } else {
@@ -203,6 +270,8 @@ function toggleLoading(show, messageKey = 'loading') {
 }
 
 function showNotification(message, type = 'info') {
+    if (!UI.notificationMessage) return;
+
     UI.notificationMessage.textContent = message;
     UI.notificationMessage.classList.remove('bg-green-500', 'bg-red-500', 'bg-blue-500');
 
@@ -212,11 +281,9 @@ function showNotification(message, type = 'info') {
 
     UI.notificationMessage.classList.add(bgColor);
     UI.notificationMessage.classList.remove('hidden', 'translate-x-full', 'opacity-0');
-    
-    // Animação de entrada
+
     setTimeout(() => UI.notificationMessage.classList.remove('translate-x-full', 'opacity-0'), 10);
 
-    // Animação de saída
     setTimeout(() => {
         UI.notificationMessage.classList.add('translate-x-full', 'opacity-0');
         setTimeout(() => UI.notificationMessage.classList.add('hidden'), 300);
@@ -235,96 +302,208 @@ function applyTheme(isDark) {
 
 function initializeTheme() {
     const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
     applyTheme(isDark);
 }
 
-// --- Funções de Navegação ---
-function navigateToScreen(screenId, productId = null) {
-    Object.values(UI.screens).forEach(screen => {
-        if (screen) screen.classList.add('hidden');
-    });
+// ====================================================================
+// Navegação
+// ====================================================================
+function navigateToScreen(screenId, productId = null, isGoingBack = false) {
 
-    if (screenId === 'home') {
-        UI.backButton.classList.add('hidden');
+    // Verificar existência da tela
+    if (!screenId || !UI.screens[screenId]) {
+        console.error(`Erro: Tela "${screenId}" não encontrada. Redirecionando para home.`);
+        screenId = 'home';
+    }
+
+    const currentScreen = state.navigationHistory[state.navigationHistory.length - 1];
+
+    // Salvar posição da lista de produtos
+    if (currentScreen === 'products') {
+        state.lastScrollPosition = window.scrollY;
+    }
+
+    // Esconder todas as telas
+    Object.values(UI.screens).forEach(s => s?.classList.add('hidden'));
+
+    // Registrar histórico
+    if (!isGoingBack) {
+        const lastScreen = state.navigationHistory[state.navigationHistory.length - 1];
+        if (lastScreen !== screenId) {
+            state.navigationHistory.push(screenId);
+        }
+    }
+
+    // Exibir botão voltar
+    if (state.navigationHistory.length > 1) {
+        UI.backButton?.classList.remove('hidden');
     } else {
-        UI.backButton.classList.remove('hidden');
+        UI.backButton?.classList.add('hidden');
     }
 
-    const lastScreen = state.navigationHistory[state.navigationHistory.length - 1];
-    if (lastScreen !== screenId) {
-        state.navigationHistory.push(screenId);
-    }
-
+    // Mostrar a tela escolhida
     const screen = UI.screens[screenId];
-    if (screen) screen.classList.remove('hidden');
+    if (!screen) {
+        console.error(`Erro crítico: Elemento da tela "${screenId}" não existe no DOM.`);
+        return;
+    }
+    screen.classList.remove('hidden');
 
-    if (screenId === 'home') {
-        renderHomeScreen();
-    } else if (screenId === 'products') {
-        renderProducts(state.products);
-    } else if (screenId === 'product-detail' && productId) {
-        renderProductDetail(productId);
-    } else if (screenId === 'settings') {
-        renderSettingsScreen();
-    } else if (screenId === 'admin') {
-        if (state.isAdmin) renderAdminScreen();
-        else navigateToScreen('home'); // Redireciona se não for admin
+    // Renderizações específicas
+    try {
+        switch (screenId) {
+            case 'home':
+                renderHomeScreen();
+                break;
+
+            case 'products':
+                UI.searchInput.value = '';
+                renderProducts(state.products);
+
+                if (isGoingBack && state.lastScrollPosition) {
+                    requestAnimationFrame(() =>
+                        window.scrollTo({ top: state.lastScrollPosition, behavior: "instant" })
+                    );
+                } else {
+                    window.scrollTo(0, 0);
+                }
+                break;
+
+            case 'product-detail':
+                if (productId) renderProductDetail(productId);
+                window.scrollTo(0, 0);
+                break;
+
+            case 'settings':
+                renderSettingsScreen();
+                break;
+
+            case 'admin':
+                state.isAdmin ? renderAdminScreen() : navigateToScreen('home');
+                break;
+
+            case 'profile':
+                renderProfileScreen();
+                break;
+        }
+
+    } catch (error) {
+        console.error(`Erro ao renderizar tela "${screenId}":`, error);
+        showNotification('Erro ao carregar a tela. Tente novamente.', 'error');
     }
 }
 
 function goBack() {
-    state.navigationHistory.pop(); 
-    const previousScreenId = state.navigationHistory[state.navigationHistory.length - 1];
-
-    if (previousScreenId) {
-        state.navigationHistory.pop(); 
-        navigateToScreen(previousScreenId);
-    } else {
-        navigateToScreen('home');
+    if (state.navigationHistory.length <= 1) {
+        navigateToScreen('home', null, true);
+        return;
     }
+    state.navigationHistory.pop();
+    const previousScreen = state.navigationHistory[state.navigationHistory.length - 1];
+    navigateToScreen(previousScreen || 'home', null, true);
 }
 
 // ====================================================================
-// MÓDULO DE LÓGICA DA APLICAÇÃO (Com Firebase v9)
+// Upload / imagens
 // ====================================================================
-
-// --- Funções de Upload ---
-
-async function uploadImage(file) {
+async function uploadImage(fileOrDataUrl) {
     const formData = new FormData();
-    formData.append('file', file);
+    let fileToUpload = fileOrDataUrl;
+
+    if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
+        fileToUpload = dataURLtoBlob(fileOrDataUrl);
+    }
+
+    if (!(fileToUpload instanceof Blob || fileToUpload instanceof File)) {
+        console.error("Erro: Tipo de arquivo inválido para upload.");
+        return null;
+    }
+
+    formData.append('file', fileToUpload);
     formData.append('upload_preset', CONFIG.CLOUDINARY_UPLOAD_PRESET);
 
     try {
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${CONFIG.CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        const resp = await fetch(`https://api.cloudinary.com/v1_1/${CONFIG.CLOUDINARY_CLOUD_NAME}/image/upload`, {
             method: 'POST',
             body: formData
         });
-        const data = await response.json();
-        if (response.ok) return data.secure_url;
-        else throw new Error(data.error.message);
+        const data = await resp.json();
+        if (resp.ok) return data.secure_url;
+        else throw new Error(data.error ? data.error.message : 'Upload failed');
     } catch (error) {
         console.error("Erro ao fazer upload da imagem:", error);
         return null;
     }
 }
 
-// --- Lógica de Login/Registro ---
+function dataURLtoBlob(dataurl) {
+    const arr = dataurl.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[arr.length - 1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+}
 
+// Redimensiona/compacta e retorna DataURL (string). Já testado com canvas-toDataURL.
+function processImage(file, maxWidth = 800, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = Math.round(height * (maxWidth / width));
+                    width = maxWidth;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                try {
+                    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    resolve(dataUrl);
+                } catch (err) {
+                    reject('Erro ao gerar imagem processada: ' + err);
+                }
+            };
+
+            img.onerror = () => reject('Erro ao carregar imagem para redimensionar.');
+        };
+
+        reader.onerror = () => reject('Erro ao ler o ficheiro.');
+    });
+}
+
+// ====================================================================
+// Login / Registro / Perfil
+// ====================================================================
 function handleProfilePictureChange(event) {
-    const file = event.target.files[0];
+    const file = event.target.files && event.target.files[0];
     if (file) {
         state.profilePictureFile = file;
         const reader = new FileReader();
         reader.onload = (e) => {
-            UI.profilePreview.src = e.target.result;
-            UI.defaultProfileIcon.classList.add('hidden');
-            UI.profilePreviewContainer.classList.remove('hidden');
-            document.getElementById('profile-picture-upload-area').classList.remove('border-dashed', 'border-main');
-            document.getElementById('profile-picture-upload-area').classList.add('border-solid', 'border-brand-primary');
-            document.getElementById('profile-picture-text').textContent = translations[state.currentLanguage]['upload-photo'];
+            if (UI.profilePreview) UI.profilePreview.src = e.target.result;
+            UI.defaultProfileIcon?.classList.add('hidden');
+            UI.profilePreviewContainer?.classList.remove('hidden');
+            document.getElementById('profile-picture-upload-area')?.classList.remove('border-dashed', 'border-main');
+            document.getElementById('profile-picture-upload-area')?.classList.add('border-solid', 'border-brand-primary');
         };
         reader.readAsDataURL(file);
     }
@@ -338,10 +517,27 @@ async function handleRegistration(event) {
     const db = window.db;
 
     const fullName = document.getElementById('full-name').value.trim();
-    const phoneNumber = document.getElementById('phone-number').value.trim().replace(/\D/g, '');
+    const phoneNumberRaw = document.getElementById('phone-number').value.trim();
+    const phoneNumber = phoneNumberRaw.replace(/\D/g, '');
+
+    const REQUIRED_PHONE_LENGTH = 12;
 
     if (!fullName || !phoneNumber) {
         showNotification('Por favor, preencha todos os campos.', 'error');
+        toggleLoading(false);
+        return;
+    }
+
+    const operatorPrefix = phoneNumber.substring(3, 5);
+
+    if (phoneNumber.substring(0, 3) !== '258' || phoneNumber.length !== REQUIRED_PHONE_LENGTH) {
+        showNotification(`Por favor, insira um número válido de ${REQUIRED_PHONE_LENGTH} dígitos, começando com 258.`, 'error');
+        toggleLoading(false);
+        return;
+    }
+
+    if (!CONFIG.VALID_MZ_PREFIXES.includes(operatorPrefix)) {
+        showNotification(`O prefixo ${operatorPrefix} não é reconhecido. Use 82, 83, 84, 85, 86 ou 87.`, 'error');
         toggleLoading(false);
         return;
     }
@@ -351,25 +547,30 @@ async function handleRegistration(event) {
 
         if (state.profilePictureFile) {
             showNotification('Fazendo upload da foto...', 'info');
-            profilePicUrl = await uploadImage(state.profilePictureFile);
-            if (!profilePicUrl) {
-                showNotification('O upload da foto falhou, usando imagem padrão.', 'error');
-            }
+            // Process image for profile pic (smaller)
+            const processed = await processImage(state.profilePictureFile, 300, 0.8);
+            profilePicUrl = await uploadImage(processed) || profilePicUrl;
         }
 
         const userRef = doc(db, 'users', phoneNumber);
         const docSnap = await getDoc(userRef);
 
+        const isAdministrator = phoneNumber === CONFIG.ADMIN_WHATSAPP_NUMBER;
+
         let userData;
         if (docSnap.exists()) {
             userData = docSnap.data();
             showNotification(`Bem-vindo(a) de volta, ${userData.fullName}!`, 'success');
+            userData.role = isAdministrator ? 'admin' : (userData.role || 'user');
         } else {
+            const role = isAdministrator ? 'admin' : 'user';
+
             userData = {
                 id: phoneNumber,
                 fullName,
                 phoneNumber,
                 profilePicture: profilePicUrl,
+                role: role,
                 createdAt: new Date().toISOString(),
             };
             await setDoc(userRef, userData);
@@ -389,25 +590,63 @@ async function handleRegistration(event) {
 }
 
 function handleLogout() {
-    localStorage.clear();
+    localStorage.removeItem('currentUser');
+    // manter outros dados locais úteis? dependendo do UX, podemos ou não limpar tudo.
     state.user = null;
-    state.isAdmin = false;
     state.cart = [];
+    localStorage.setItem('cart', JSON.stringify([]));
     window.location.reload();
 }
 
-// --- Funções de Produto e Renderização ---
+function handleProfileEdit(event) {
+    event.preventDefault();
 
+    if (!state.user) return;
+    toggleLoading(true, 'loading');
+
+    const newFullName = UI.profileFullNameInput?.value.trim() || state.user.fullName;
+    const newPhoneNumber = UI.profilePhoneNumberInput?.value.trim() || state.user.phoneNumber;
+
+    state.user.fullName = newFullName;
+    state.user.phoneNumber = newPhoneNumber;
+    localStorage.setItem('currentUser', JSON.stringify(state.user));
+
+    if (UI.userProfileName) {
+        UI.userProfileName.textContent = newFullName.split(' ')[0];
+    }
+
+    renderProfileScreen();
+
+    showNotification('Perfil atualizado com sucesso!', 'success');
+    toggleLoading(false);
+}
+
+// ====================================================================
+// Produtos / Renderização
+// ====================================================================
 async function fetchProducts() {
     toggleLoading(true, 'loading-products');
-    const { collection, query, orderBy, getDocs } = window.firebase;
-    const db = window.db;
 
     try {
-        const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
+        const { collection, query, orderBy, getDocs } = window.firebase;
+        const db = window.db;
+
+        const q = query(
+            collection(db, "products"),
+            orderBy("createdAt", "desc")
+        );
+
         const querySnapshot = await getDocs(q);
 
-        state.products = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        state.products = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                // 🔥 Garantir que todos os produtos tenham "visible"
+                visible: data.visible ?? true
+            };
+        });
 
     } catch (error) {
         console.error("Erro ao buscar produtos: ", error);
@@ -419,16 +658,18 @@ async function fetchProducts() {
 
 function renderProductCard(product) {
     const imgUrl = product.imageUrl || 'https://placehold.co/400x300?text=Produto';
+    const truncatedName = (product.name || '').replace(/'/g, "\\'");
+    const price = (typeof product.price === 'number') ? product.price.toFixed(2) : product.price;
     return `
         <div class="bg-primary shadow-xl rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
             <img src="${imgUrl}" alt="${product.name}" class="w-full h-48 object-cover cursor-pointer" onclick="navigateToScreen('product-detail', '${product.id}')">
             <div class="p-4">
                 <h3 class="text-lg font-bold truncate">${product.name}</h3>
-                <p class="text-secondary text-sm mb-2">${product.category}</p>
-                <p class="text-xl font-extrabold text-brand-primary mb-3">${CONFIG.CURRENCY_SYMBOL} ${product.price.toFixed(2)}</p>
-                <button 
+                <p class="text-secondary text-sm mb-2">${product.category || ''}</p>
+                <p class="text-xl font-extrabold text-brand-primary mb-3">${CONFIG.CURRENCY_SYMBOL} ${price}</p>
+                <button
                     class="w-full py-2 px-4 bg-brand-primary text-white rounded-lg hover:bg-brand-hover transition-colors duration-300 text-sm font-semibold"
-                    onclick="addToCart('${product.id}', '${product.name.replace(/'/g, "\\'")}', ${product.price}, '${imgUrl}')"
+                    onclick="addToCart('${product.id}', '${truncatedName}', ${product.price}, '${imgUrl}')"
                     data-lang="add-to-cart-btn">
                     Adicionar ao Carrinho
                 </button>
@@ -439,24 +680,41 @@ function renderProductCard(product) {
 
 function renderProducts(products) {
     const productsScreen = UI.screens['products'];
-    if (!productsScreen.innerHTML.trim() || !document.getElementById('product-grid')) {
+    if (!productsScreen) {
+        console.error("Erro: O elemento products-screen não foi encontrado.");
+        return;
+    }
+
+    // 🔥 FILTRAR produtos ocultos
+    products = products.filter(p => p.visible !== false);
+
+    if (!document.getElementById('product-grid')) {
         productsScreen.innerHTML = `<div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-4"></div>`;
         UI.productGrid = document.getElementById('product-grid');
     }
-    
-    const filteredProducts = products; // Lógica de busca/filtro pode ser implementada aqui
 
     if (UI.productGrid) {
-        UI.productGrid.innerHTML = filteredProducts.map(renderProductCard).join('');
+        if (!products || products.length === 0) {
+            UI.productGrid.innerHTML = `<p class="text-center text-xl py-10 text-secondary">Nenhum produto encontrado.</p>`;
+        } else {
+            UI.productGrid.innerHTML = products.map(renderProductCard).join('');
+        }
     }
     setLanguage(state.currentLanguage);
 }
 
 function renderProductDetail(productId) {
+    state.lastScrollPosition = window.scrollY;
+
     const product = state.products.find(p => p.id === productId);
     if (!product) {
         showNotification('Produto não encontrado.', 'error');
         navigateToScreen('products');
+
+        setTimeout(() => {
+            window.scrollTo(0, state.lastScrollPosition || 0);
+        }, 10);
+
         return;
     }
 
@@ -472,11 +730,11 @@ function renderProductDetail(productId) {
                 <p class="text-secondary text-lg">${product.category}</p>
                 <p class="text-2xl font-black text-green-500">${CONFIG.CURRENCY_SYMBOL} ${product.price.toFixed(2)}</p>
                 <p class="text-primary leading-relaxed">${product.description || 'Descrição não disponível.'}</p>
-                
+
                 <div class="pt-4">
-                    <button 
+                    <button
                         class="w-full py-3 px-6 bg-brand-primary text-white rounded-xl hover:bg-brand-hover transition-colors duration-300 text-lg font-semibold flex items-center justify-center space-x-2"
-                        onclick="addToCart('${product.id}', '${product.name.replace(/'/g, "\\'")}', ${product.price}, '${imgUrl}')">
+                        onclick="addToCart('${product.id}', '${(product.name||'').replace(/'/g, "\\'")}', ${product.price}, '${imgUrl}')">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         <span data-lang="add-to-cart-btn">Adicionar ao Carrinho</span>
                     </button>
@@ -484,17 +742,20 @@ function renderProductDetail(productId) {
             </div>
         </div>
     `;
+
     setLanguage(state.currentLanguage);
 }
 
-
-// --- Funções de Carrinho ---
-
+// ====================================================================
+// Carrinho
+// ====================================================================
 function saveCart() {
     localStorage.setItem('cart', JSON.stringify(state.cart));
 }
 
 function updateCartUI() {
+    if (!UI.cartItemCount || !UI.cartItemsContainer || !UI.cartTotal || !UI.checkoutButton) return;
+
     UI.cartItemCount.textContent = state.cart.reduce((total, item) => total + item.quantity, 0);
     UI.cartItemsContainer.innerHTML = '';
 
@@ -516,7 +777,7 @@ function updateCartUI() {
                     <p class="text-sm text-secondary">${CONFIG.CURRENCY_SYMBOL} ${item.price.toFixed(2)} x ${item.quantity}</p>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <input type="number" min="1" value="${item.quantity}" 
+                    <input type="number" min="1" value="${item.quantity}"
                         onchange="updateCartItemQuantity('${item.id}', this.value)"
                         class="w-12 text-center border rounded-md bg-secondary border-main text-primary">
                     <button class="text-red-500 hover:text-red-700 p-1 rounded-full" onclick="removeFromCart('${item.id}')">
@@ -533,7 +794,6 @@ function updateCartUI() {
 
 function addToCart(id, name, price, imageUrl, quantity = 1) {
     const existingItem = state.cart.find(item => item.id === id);
-
     const qty = parseInt(quantity);
 
     if (existingItem) {
@@ -556,7 +816,7 @@ function removeFromCart(id) {
 
 function updateCartItemQuantity(id, quantity) {
     const qty = parseInt(quantity);
-    if (qty <= 0) {
+    if (qty <= 0 || isNaN(qty)) {
         removeFromCart(id);
         return;
     }
@@ -570,36 +830,62 @@ function updateCartItemQuantity(id, quantity) {
 }
 
 function openCartModal() {
+    if (!UI.cartModal || !UI.cartPanel) return;
+
     updateCartUI();
     UI.cartModal.classList.remove('hidden');
-    UI.cartPanel.classList.remove('translate-x-full');
-    setTimeout(() => UI.cartModal.classList.add('opacity-100'), 10);
+    setTimeout(() => {
+        UI.cartModal.classList.add('opacity-100');
+        UI.cartPanel.classList.remove('translate-x-full');
+    }, 10);
 }
 
 function closeCartModal() {
+    if (!UI.cartModal || !UI.cartPanel) return;
+
     UI.cartPanel.classList.add('translate-x-full');
     UI.cartModal.classList.remove('opacity-100');
     setTimeout(() => UI.cartModal.classList.add('hidden'), 300);
 }
 
 function prepareOrderMessage() {
+    const deliveryAddress = state.user.deliveryAddress || "Endereço não fornecido";
+    const encodedAddress = encodeURIComponent(deliveryAddress);
+    const mapUrl = `https://www.google.com/maps/search/${encodedAddress}`;
+
     const total = state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-    let message = `*Novo Pedido Nó&Laço*\n\n`;
-    message += `*Cliente:* ${state.user.fullName} (Tel: ${state.user.phoneNumber})\n\n`;
-    message += `*Itens do Pedido:*\n`;
+    const formattedItems = state.cart.map((item, index) => {
+        const subtotal = (item.price * item.quantity).toFixed(2);
+        return `
+${index + 1}) *${item.name}*
+• Quantidade: ${item.quantity}
+• Subtotal: ${CONFIG.CURRENCY_SYMBOL} ${subtotal}
+`;
+    }).join("");
 
-    state.cart.forEach((item, index) => {
-        message += `${index + 1}. ${item.name}\n`;
-        message += `   Quantidade: ${item.quantity}\n`;
-        message += `   Preço: ${CONFIG.CURRENCY_SYMBOL} ${item.price.toFixed(2)}/un\n`;
-        message += `   Subtotal: ${CONFIG.CURRENCY_SYMBOL} ${(item.price * item.quantity).toFixed(2)}\n`;
-    });
+    const message = `
+🧾 *NOVO PEDIDO – Nó&Laço*
 
-    message += `\n*Total a Pagar:* ${CONFIG.CURRENCY_SYMBOL} ${total.toFixed(2)}\n\n`;
-    message += `Por favor, confirme os detalhes do pagamento e entrega.`;
+👤 *Cliente:* ${state.user.fullName}
+📞 *Telefone:* ${state.user.phoneNumber}
+📍 *Endereço de Entrega:* ${deliveryAddress}
 
-    return encodeURIComponent(message);
+🗺️ *Ver no Mapa:*
+${mapUrl}
+
+━━━━━━━━━━━━━━━━━━
+📦 *Itens do Pedido:*
+${formattedItems}
+━━━━━━━━━━━━━━━━━━
+
+💳 *Total a Pagar:* *${CONFIG.CURRENCY_SYMBOL} ${total.toFixed(2)}*
+
+🙏 Obrigado!
+Por favor, confirme os detalhes de pagamento e entrega.
+    `;
+
+    return encodeURIComponent(message.trim());
 }
 
 function sendOrderViaWhatsApp() {
@@ -616,115 +902,182 @@ function sendOrderViaWhatsApp() {
 }
 
 function openOrderConfirmModal() {
+    if (!UI.orderConfirmModal || !UI.deliveryAddressInput) return;
+
     if (state.cart.length === 0) {
         showNotification('O carrinho está vazio!', 'error');
         return;
     }
+
+    const address = UI.deliveryAddressInput.value.trim();
+    if (!address) {
+        showNotification('Por favor, insira o endereço de entrega completo!', 'error');
+        UI.deliveryAddressInput.focus();
+        return;
+    }
+
+    state.user.deliveryAddress = address;
+
     UI.orderConfirmModal.classList.remove('hidden', 'opacity-0');
     setTimeout(() => UI.orderConfirmModal.classList.remove('opacity-0'), 10);
 }
 
 function closeOrderConfirmModal() {
+    if (!UI.orderConfirmModal) return;
+
     UI.orderConfirmModal.classList.add('opacity-0');
     setTimeout(() => UI.orderConfirmModal.classList.add('hidden'), 300);
 }
 
-// --- Funções de Admin e CRUD de Produtos ---
+// ====================================================================
+// Admin / CRUD Produtos (fixes e destaque)
+// ====================================================================
 
 function handleAdminLogin(event) {
     event.preventDefault();
-    const code = document.getElementById('admin-code').value;
+    const code = document.getElementById('admin-code')?.value;
 
     if (code === CONFIG.INSECURE_ADMIN_CODE) {
-        state.isAdmin = true;
-        localStorage.setItem('isAdmin', 'true');
-        closeAdminModal();
-        showNotification('Login de Admin bem-sucedido!', 'success');
-        navigateToScreen('admin');
+        if (state.user) {
+            state.user.role = 'admin';
+            localStorage.setItem('currentUser', JSON.stringify(state.user));
+            updateAdminVisibility();
+            closeAdminModal();
+            showNotification('Acesso de Admin ativado!', 'success');
+            navigateToScreen('admin');
+        } else {
+            showNotification('Faça login primeiro para usar este código.', 'error');
+        }
     } else {
         showNotification('Código secreto incorreto.', 'error');
     }
-    document.getElementById('admin-code').value = '';
+
+    if (document.getElementById('admin-code')) {
+        document.getElementById('admin-code').value = '';
+    }
 }
 
 function closeAdminModal() {
+    if (!UI.adminLoginModal) return;
     UI.adminLoginModal.classList.add('opacity-0');
     setTimeout(() => UI.adminLoginModal.classList.add('hidden'), 300);
 }
 
-function updateAdminButtonVisibility() {
+function updateAdminVisibility() {
+    if (!UI.adminButton) return;
+
     if (state.isAdmin) {
         UI.adminButton.classList.remove('hidden');
-    } 
-    // Mantido visível para login: UI.adminButton.classList.add('hidden');
+    } else {
+        UI.adminButton.classList.add('hidden');
+    }
 }
-
-// ADMIN CRUD FUNCTIONS
 
 function resetProductForm() {
+    if (!UI.productForm) return;
+
     UI.productForm.reset();
-    UI.productIdInput.value = '';
-    UI.productFormTitle.textContent = translations[state.currentLanguage]['add-new-product-title'] || 'Adicionar Novo Produto';
-    UI.submitProductButton.textContent = translations[state.currentLanguage]['add-product-button'] || 'Adicionar Produto';
-    UI.submitProductButton.classList.remove('bg-blue-500', 'hover:bg-blue-600');
-    UI.submitProductButton.classList.add('bg-green-500', 'hover:bg-green-600');
-    UI.cancelEditButton.classList.add('hidden');
+    if (UI.productIdInput) UI.productIdInput.value = '';
+    if (UI.productFormTitle) {
+        UI.productFormTitle.textContent = translations[state.currentLanguage]['add-new-product-title'] || 'Adicionar Novo Produto';
+    }
+    if (UI.submitProductButton) {
+        UI.submitProductButton.textContent = translations[state.currentLanguage]['add-product-button'] || 'Adicionar Produto';
+        UI.submitProductButton.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+        UI.submitProductButton.classList.add('bg-green-500', 'hover:bg-green-600');
+    }
+    if (UI.cancelEditButton) UI.cancelEditButton.classList.add('hidden');
+
     state.productToEdit = null;
-    UI.productImageInput.value = ''; // Limpa o campo de arquivo
+    state.originalImageFile = null;
+
+    if (UI.productImageInput) UI.productImageInput.value = '';
+    if (UI.productFeatured) UI.productFeatured.checked = false;
 }
 
-async function handleProductSubmit(event) {
-    event.preventDefault();
+// Função principal que salva produto (create/update)
+async function handleProductSubmit(e) {
+    e.preventDefault();
     toggleLoading(true, 'loading');
 
-    const { doc, setDoc, collection } = window.firebase;
     const db = window.db;
+    const { collection, doc, setDoc, updateDoc } = window.firebase;
 
-    const id = UI.productIdInput.value || doc(collection(db, "products")).id; 
-    const isEditing = !!UI.productIdInput.value;
-
-    const productName = UI.productNameInput.value;
-    const productPrice = parseFloat(UI.productPriceInput.value);
-    const productCategory = UI.productCategoryInput.value;
-    const productDescription = UI.productDescriptionInput.value;
-    let productImageUrl = isEditing && state.productToEdit ? state.productToEdit.imageUrl : 'https://placehold.co/400x300?text=Produto'; 
+    const isEditing = !!state.productToEdit;
+    let productRef = null;
 
     try {
-        if (UI.productImageInput.files[0]) {
-            showNotification('Fazendo upload da imagem do produto...', 'info');
-            const newImageUrl = await uploadImage(UI.productImageInput.files[0]);
-            if (newImageUrl) {
-                productImageUrl = newImageUrl;
+        const productName = UI.productNameInput?.value.trim();
+        const productPrice = parseFloat(UI.productPriceInput?.value);
+        const productCategory = UI.productCategoryInput?.value.trim();
+        const productDescription = UI.productDescriptionInput?.value.trim();
+        const isFeatured = !!(UI.productFeatured && UI.productFeatured.checked);
+
+        if (!productName || isNaN(productPrice) || productPrice <= 0 || !productCategory) {
+            showNotification('Por favor, preencha nome, preço (válido) e categoria.', 'error');
+            toggleLoading(false);
+            return;
+        }
+
+        // Determinar referência (novo ou existente)
+        if (isEditing) {
+            productRef = doc(db, 'products', state.productToEdit.id);
+        } else {
+            productRef = doc(collection(db, 'products')); // gera um docRef com id automático
+        }
+
+        // Preparar image (se houver originalImageFile)
+        let productImageUrl = state.productToEdit?.imageUrl || 'https://placehold.co/400x300?text=Produto';
+
+        if (state.originalImageFile) {
+            // usa configurações atuais ou padrão
+            const maxW = state.imageSettings?.maxWidth || 800;
+            const quality = typeof state.imageSettings?.quality === 'number' ? state.imageSettings.quality : 0.85;
+
+            const processedDataUrl = await processImage(state.originalImageFile, maxW, quality);
+            // uploadImage aceita DataURL (converterá internamente)
+            const uploadedUrl = await uploadImage(processedDataUrl);
+            if (uploadedUrl) {
+                productImageUrl = uploadedUrl;
             } else {
-                showNotification('Falha no upload da imagem, usando a imagem anterior/padrão.', 'error');
+                showNotification('Erro ao fazer upload da imagem. Produto não salvo.', 'error');
+                toggleLoading(false);
+                return;
             }
         }
 
+        // Montar objeto produto
+        const now = new Date().toISOString();
         const productData = {
             name: productName,
             price: productPrice,
             category: productCategory,
             description: productDescription,
             imageUrl: productImageUrl,
-            createdAt: state.productToEdit ? state.productToEdit.createdAt : new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            featured: isFeatured,
+            updatedAt: now,
         };
 
-        await setDoc(doc(db, 'products', id), productData);
-
-        if (isEditing) {
-            showNotification('Produto atualizado com sucesso!', 'success');
+        // Se for criar novo, definir createdAt e id
+        if (!isEditing) {
+            productData.createdAt = now;
+            productData.id = productRef.id;
+            await setDoc(productRef, productData);
+            showNotification('Produto criado com sucesso!', 'success');
         } else {
-            showNotification('Novo produto adicionado com sucesso!', 'success');
+            // manter createdAt existente
+            productData.id = state.productToEdit.id;
+            await setDoc(productRef, { ...state.productToEdit, ...productData }, { merge: true });
+            showNotification('Produto atualizado com sucesso!', 'success');
         }
 
-        await fetchProducts(); 
-        renderAdminScreen(); 
+        // Atualizar lista local e UI
+        await fetchProducts();
+        renderAdminScreen();
         resetProductForm();
-
     } catch (error) {
-        console.error("Erro ao salvar produto: ", error);
-        showNotification('Erro ao salvar produto. Tente novamente.', 'error');
+        console.error("Erro ao salvar produto:", error);
+        showNotification('Erro ao salvar produto. Veja console.', 'error');
     } finally {
         toggleLoading(false);
     }
@@ -734,22 +1087,27 @@ function editProduct(productId) {
     const product = state.products.find(p => p.id === productId);
     if (!product) return;
 
-    state.productToEdit = product; 
+    state.productToEdit = product;
 
-    UI.productIdInput.value = product.id;
-    UI.productNameInput.value = product.name;
-    UI.productPriceInput.value = product.price;
-    UI.productCategoryInput.value = product.category;
-    UI.productDescriptionInput.value = product.description;
-    
-    UI.productFormTitle.textContent = translations[state.currentLanguage]['edit-product-title'] || 'Editar Produto';
-    UI.submitProductButton.textContent = translations[state.currentLanguage]['save-changes-button'] || 'Salvar Alterações';
-    UI.submitProductButton.classList.remove('bg-green-500', 'hover:bg-green-600');
-    UI.submitProductButton.classList.add('bg-blue-500', 'hover:bg-blue-600');
-    UI.cancelEditButton.classList.remove('hidden');
+    if (UI.productIdInput) UI.productIdInput.value = product.id;
+    if (UI.productNameInput) UI.productNameInput.value = product.name;
+    if (UI.productPriceInput) UI.productPriceInput.value = product.price;
+    if (UI.productCategoryInput) UI.productCategoryInput.value = product.category;
+    if (UI.productDescriptionInput) UI.productDescriptionInput.value = product.description;
+    if (UI.productFeatured) UI.productFeatured.checked = !!product.featured;
 
-    UI.adminPanelTitle.scrollIntoView({ behavior: 'smooth' });
+    if (UI.productFormTitle) UI.productFormTitle.textContent = translations[state.currentLanguage]['edit-product-title'] || 'Editar Produto';
+    if (UI.submitProductButton) {
+        UI.submitProductButton.textContent = translations[state.currentLanguage]['save-changes-button'] || 'Salvar Alterações';
+        UI.submitProductButton.classList.remove('bg-green-500', 'hover:bg-green-600');
+        UI.submitProductButton.classList.add('bg-blue-500', 'hover:bg-blue-600');
+    }
+    if (UI.cancelEditButton) UI.cancelEditButton.classList.remove('hidden');
+
+    const titleElement = document.getElementById('admin-panel-title');
+    if (titleElement) titleElement.scrollIntoView({ behavior: 'smooth' });
 }
+window.editProduct = editProduct;
 
 async function deleteProduct(productId) {
     if (!confirm(translations[state.currentLanguage]['confirm-delete-product'] || 'Tem certeza que deseja excluir este produto?')) {
@@ -757,16 +1115,14 @@ async function deleteProduct(productId) {
     }
 
     toggleLoading(true, 'loading');
-    const { doc, deleteDoc } = window.firebase;
-    const db = window.db;
-
     try {
+        const { doc, deleteDoc } = window.firebase;
+        const db = window.db;
+
         await deleteDoc(doc(db, 'products', productId));
-
         showNotification('Produto excluído com sucesso!', 'success');
-        await fetchProducts(); 
-        renderAdminScreen(); 
-
+        await fetchProducts();
+        renderAdminScreen();
     } catch (error) {
         console.error("Erro ao excluir produto: ", error);
         showNotification('Erro ao excluir produto. Tente novamente.', 'error');
@@ -774,69 +1130,215 @@ async function deleteProduct(productId) {
         toggleLoading(false);
     }
 }
-
+window.deleteProduct = deleteProduct;
 
 // ====================================================================
-// Módulo de Renderização de Telas
+// NOVO MÓDULO: Alternar Visibilidade do Produto (O OLHO)
 // ====================================================================
+async function toggleProductVisibility(productId, isCurrentlyVisible) {
+    if (!state.isAdmin) {
+        showNotification('Apenas administradores podem alterar a visibilidade.', 'error');
+        return;
+    }
+    toggleLoading(true, 'Ajustando visibilidade...');
+    try {
+        const ref = doc(db, 'products', productId);
+        // O status é invertido em relação ao estado atual
+        const newVisibleStatus = !isCurrentlyVisible; 
+        
+        await updateDoc(ref, { 
+            visible: newVisibleStatus, // Este é o NOVO campo no Firebase
+            updatedAt: new Date().toISOString() 
+        });
 
+        // Após a atualização, recarrega os dados e a tela de Admin
+        await fetchProducts(); 
+        renderAdminScreen();
+        
+        showNotification(newVisibleStatus ? 'Produto definido como VISÍVEL.' : 'Produto definido como OCULTO.', 'success');
+
+    } catch (error) {
+        console.error('Erro ao atualizar visibilidade:', error);
+        showNotification('Erro ao atualizar visibilidade do produto.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+// Atualiza o status "featured" do produto (toggle)
+async function toggleProductFeatured(productId) {
+    try {
+        toggleLoading(true, 'loading');
+        const { doc, updateDoc } = window.firebase;
+        const db = window.db;
+
+        const product = state.products.find(p => p.id === productId);
+        if (!product) throw new Error('Produto não encontrado');
+
+        const newFeatured = !product.featured;
+        const ref = doc(db, 'products', productId);
+        await updateDoc(ref, { featured: newFeatured, updatedAt: new Date().toISOString() });
+
+        // atualizar localmente e na UI
+        await fetchProducts();
+        renderAdminScreen();
+        showNotification(newFeatured ? 'Produto marcado como destaque.' : 'Produto removido dos destaques.', 'success');
+    } catch (error) {
+        console.error('Erro ao atualizar destaque:', error);
+        showNotification('Erro ao atualizar destaque do produto.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+window.toggleProductVisibility = async function(productId) {
+    try {
+        const { doc, updateDoc } = window.firebase;
+        const db = window.db;
+
+        const product = state.products.find(p => p.id === productId);
+        if (!product) return;
+
+        const newStatus = !product.visible;
+
+        await updateDoc(doc(db, "products", productId), {
+            visible: newStatus
+        });
+
+        product.visible = newStatus;
+
+        showNotification(
+            newStatus ? "Produto agora está visível!" : "Produto ocultado!",
+            "success"
+        );
+
+        // Atualiza todas as telas que dependem de produtos
+        renderProductList();
+        renderHomeScreen();
+        renderProducts(state.products);
+
+    } catch (error) {
+        console.error("Erro ao alterar visibilidade:", error);
+        showNotification("Erro ao alterar status do produto.", "error");
+    }
+}
+
+window.toggleProductFeatured = toggleProductFeatured;
+
+// Filtragem simples
+function filterProducts(searchTerm, category = 'all') {
+    const term = (searchTerm || '').toLowerCase().trim();
+
+    const categoryFiltered = category === 'all'
+        ? state.products
+        : state.products.filter(product =>
+            product.category && product.category.toLowerCase() === category.toLowerCase()
+        );
+
+    if (!term) {
+        return categoryFiltered;
+    }
+
+    return categoryFiltered.filter(product =>
+        (product.name || '').toLowerCase().includes(term) ||
+        (product.description && product.description.toLowerCase().includes(term))
+    );
+}
+
+function handleSearch(event) {
+    const searchTerm = event.target.value;
+    const currentScreenId = state.navigationHistory[state.navigationHistory.length - 1];
+
+    if (searchTerm.trim() && currentScreenId !== 'products') {
+        navigateToScreen('products');
+    }
+
+    const currentCategory = 'all';
+    const filteredProducts = filterProducts(searchTerm, currentCategory);
+
+    renderProducts(filteredProducts);
+}
+
+// ====================================================================
+// Renderização de telas (home/settings/profile/admin)
+// ====================================================================
 function renderHomeScreen() {
     const homeScreen = UI.screens['home'];
-    homeScreen.innerHTML = `
-        <div class="text-center py-16 px-4 bg-secondary rounded-xl shadow-lg">
-            <h2 class="text-5xl font-extrabold text-brand-primary mb-4" data-lang="home-welcome">Bem-vindo à Nó&Laço!</h2>
-            <p class="text-xl text-secondary mb-8" data-lang="home-subtitle">A sua loja online de acessórios. Escolha a sua categoria favorita e comece a comprar!</p>
-            <button id="view-products-btn" class="py-3 px-8 bg-brand-primary text-white text-lg font-semibold rounded-xl hover:bg-brand-hover transition-colors duration-300" data-lang="view-products-btn">
-                Ver Todos os Produtos
-            </button>
-        </div>
+    if (!homeScreen) {
+        console.error("Erro: #home-screen não encontrada.");
+        return;
+    }
 
-        <h3 class="text-3xl font-bold mt-12 mb-6 text-primary">Destaques</h3>
-        <div id="featured-products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            ${state.products.slice(0, 3).map(renderProductCard).join('')}
-        </div>
-    `;
-    document.getElementById('view-products-btn').addEventListener('click', () => navigateToScreen('products'));
-    setLanguage(state.currentLanguage);
-}
+    const featuredContainer = document.getElementById('featured-products-container');
+    const noFeaturedMessage = document.getElementById('no-featured-message');
+
+    if (!featuredContainer || !noFeaturedMessage) {
+        console.warn("Conteúdo incompleto. Exibindo tela mesmo assim.");
+        homeScreen.classList.remove('hidden');
+        return;
+    }
+
+    homeScreen.classList.remove('hidden');
+    featuredContainer.innerHTML = '';
+
+    const featuredProducts = state.products.filter(p => p.featured && p.visible !== false);
+
+    if (featuredProducts.length > 0) {
+        noFeaturedMessage.classList.add('hidden');
+        featuredContainer.innerHTML = featuredProducts.slice(0, 3).map(renderProductCard).join('');
+    } else {
+        noFeaturedMessage.classList.remove('hidden');
+    }
+
+    const viewAllBtn = document.getElementById('view-all-products-button');
+    if (viewAllBtn) {
+        viewAllBtn.onclick = () => navigateToScreen('products');
+    }
+
+    setLanguage(state.currentLanguage);}
 
 function renderSettingsScreen() {
     const settingsScreen = UI.screens['settings'];
+    if (!settingsScreen) return;
+
     settingsScreen.innerHTML = `
-        <div class="max-w-xl mx-auto bg-secondary p-8 rounded-xl shadow-2xl space-y-6">
-            <h2 class="text-3xl font-bold text-center text-brand-primary" data-lang="settings-title">Configurações</h2>
-            
-            <div class="flex justify-between items-center border-b pb-4 border-main">
-                <label for="theme-toggle" class="text-lg font-medium text-primary" data-lang="theme-label">Tema Escuro</label>
+        <div class="max-w-xl mx-auto bg-secondary p-10 rounded-2xl shadow-xl space-y-8">
+            <h2 class="text-3xl font-bold text-center text-brand-primary tracking-wide" data-lang="settings-title">Configurações</h2>
+
+            <div class="flex justify-between items-center border-b pb-4 border-main/40">
+                <label for="theme-toggle" class="text-lg font-medium text-primary tracking-wide" data-lang="theme-label">Tema Escuro</label>
                 <input type="checkbox" id="theme-toggle" class="toggle toggle-lg bg-main checked:bg-brand-primary">
             </div>
 
-            <div class="flex justify-between items-center border-b pb-4 border-main">
-                <label for="lang-select" class="text-lg font-medium text-primary" data-lang="language-label">Idioma</label>
-                <select id="lang-select" class="p-2 border border-main rounded-lg bg-primary text-primary">
+            <div class="flex justify-between items-center border-b pb-4 border-main/40">
+                <label for="lang-select" class="text-lg font-medium text-primary tracking-wide" data-lang="language-label">Idioma</label>
+                <select id="lang-select" class="p-2 border border-main/40 rounded-xl bg-primary text-primary shadow-inner">
                     <option value="pt">Português (PT)</option>
                     <option value="en">English (EN)</option>
                 </select>
             </div>
-            
+
             ${state.user ? `
-            <button id="logout-button" class="w-full py-3 px-4 rounded-xl text-lg font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors duration-300" data-lang="logout-button-settings">
-                Sair
-            </button>` : ''}
+                <button id="logout-button" class="w-full py-3 px-4 rounded-xl text-lg font-semibold text-white bg-red-500 hover:bg-red-600 shadow-md hover:shadow-lg transition-all duration-300" data-lang="logout-button-settings">Sair</button>
+            ` : ''}
         </div>
     `;
-    
+
     const themeToggle = document.getElementById('theme-toggle');
-    themeToggle.checked = document.documentElement.classList.contains('dark');
-    themeToggle.addEventListener('change', (e) => applyTheme(e.target.checked));
+    if (themeToggle) {
+        themeToggle.checked = document.documentElement.classList.contains('dark');
+        themeToggle.addEventListener('change', e => applyTheme(e.target.checked));
+    }
 
     const langSelect = document.getElementById('lang-select');
-    langSelect.value = state.currentLanguage;
-    langSelect.addEventListener('change', (e) => {
-        setLanguage(e.target.value);
-        if (state.user) renderHomeScreen(); 
-        renderSettingsScreen(); 
-    });
+    if (langSelect) {
+        langSelect.value = state.currentLanguage;
+        langSelect.addEventListener('change', e => {
+            setLanguage(e.target.value);
+            if (state.user) renderHomeScreen();
+            renderSettingsScreen();
+        });
+    }
 
     const logoutButton = document.getElementById('logout-button');
     if (logoutButton) logoutButton.addEventListener('click', handleLogout);
@@ -844,121 +1346,620 @@ function renderSettingsScreen() {
     setLanguage(state.currentLanguage);
 }
 
-function renderAdminScreen() {
-    // A estrutura da tela admin está no HTML, apenas injetamos a lista de produtos
-    resetProductForm(); // Garante que o formulário está limpo ao entrar
-    
-    UI.adminProductList.innerHTML = '';
+function renderProfileScreen() {
+    if (!state.user) {
+        navigateToScreen('home');
+        return;
+    }
 
-    if (state.products.length === 0) {
-        UI.noProductsMessage.classList.remove('hidden');
-    } else {
-        UI.noProductsMessage.classList.add('hidden');
-        state.products.forEach(product => {
-            UI.adminProductList.innerHTML += `
-                <tr class="hover:bg-primary/50 transition-colors duration-200">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                            <img class="h-10 w-10 rounded-full object-cover mr-4" src="${product.imageUrl || 'https://placehold.co/100x100?text=P'}" alt="${product.name}">
-                            <div class="text-sm font-medium text-primary">${product.name}</div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary">${CONFIG.CURRENCY_SYMBOL} ${product.price.toFixed(2)}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button onclick="editProduct('${product.id}')" class="text-blue-600 hover:text-blue-900 transition-colors duration-200">Editar</button>
-                        <button onclick="deleteProduct('${product.id}')" class="text-red-600 hover:text-red-900 transition-colors duration-200">Excluir</button>
-                    </td>
-                </tr>
+    if (UI.profilePicLarge) {
+        UI.profilePicLarge.src = state.user.profilePicture || 'https://placehold.co/150x150';
+    }
+    if (UI.profileNameDisplay) {
+        UI.profileNameDisplay.textContent = state.user.fullName;
+    }
+
+    if (UI.profileFullNameInput) {
+        UI.profileFullNameInput.value = state.user.fullName || '';
+    }
+    if (UI.profilePhoneNumberInput) {
+        UI.profilePhoneNumberInput.value = state.user.phoneNumber || '';
+    }
+
+    const address = state.user.deliveryAddress;
+    if (UI.savedAddressesContainer) {
+        UI.savedAddressesContainer.innerHTML = '';
+
+        if (address) {
+            UI.savedAddressesContainer.innerHTML = `
+                <div class="bg-primary p-3 rounded-lg flex justify-between items-center shadow-sm">
+                    <span class="text-sm text-primary font-medium">${address} (Padrão)</span>
+                    <button class="text-blue-500 hover:text-blue-700 text-sm">Editar</button>
+                </div>
             `;
-        });
+        } else {
+            UI.savedAddressesContainer.innerHTML = `<p class="text-secondary" data-lang="no-addresses-msg">Nenhum endereço salvo.</p>`;
+        }
     }
 
     setLanguage(state.currentLanguage);
 }
 
+// Render admin screen e inicializa handlers de imagem e lista de produtos
+function renderAdminScreen() {
+    if (typeof resetProductForm === 'function') resetProductForm();
+
+    const adminScreen = UI.screens['admin'];
+    if (!adminScreen) return;
+
+    adminScreen.innerHTML = `
+        <div class="container mx-auto p-4 max-w-4xl">
+            <h2 id="admin-panel-title" class="text-2xl font-bold text-red-600 mb-6" data-lang="admin-panel-title">Painel de Administração</h2>
+
+            <div class="bg-secondary rounded-lg shadow-md p-6 mb-8">
+                <h3 id="product-form-title" class="text-xl font-semibold mb-4" data-lang="add-new-product-title">Adicionar Novo Produto</h3>
+
+                <form id="product-form" class="space-y-4">
+                    <input type="hidden" id="product-id">
+
+                    <div>
+                        <label class="block text-primary font-medium mb-2">Nome do Produto</label>
+                        <input type="text" id="product-name" required class="w-full px-4 py-2 border border-main rounded-lg bg-primary text-primary focus:ring-2 focus:ring-red-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-primary font-medium mb-2">Preço (MZN)</label>
+                        <input type="number" id="product-price" step="0.01" required class="w-full px-4 py-2 border border-main rounded-lg bg-primary text-primary focus:ring-2 focus:ring-red-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-primary font-medium mb-2">Categoria</label>
+                        <input type="text" id="product-category" required class="w-full px-4 py-2 border border-main rounded-lg bg-primary text-primary focus:ring-2 focus:ring-red-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-primary font-medium mb-2">Descrição</label>
+                        <textarea id="product-description" rows="4" required class="w-full px-4 py-2 border border-main rounded-lg bg-primary text-primary focus:ring-2 focus:ring-red-500"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-primary font-medium mb-2">Imagem do Produto</label>
+
+                        <input type="file" id="product-image" accept="image/*" class="hidden">
+
+                        <button type="button" id="choose-image-button"
+                            class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 mb-3">
+                            📁 Escolher Imagem
+                        </button>
+
+                        <div id="image-preview-container" class="hidden mt-4">
+                            <div class="border-2 border-main rounded-lg p-4 bg-primary">
+                                <p class="text-sm font-semibold text-primary mb-2">Preview:</p>
+                                <img id="image-preview" class="max-w-full h-64 object-contain rounded-lg mb-3 mx-auto">
+                                <div id="image-info" class="text-sm text-secondary space-y-1 mb-4"></div>
+
+                                <div class="space-y-3 bg-secondary p-3 rounded">
+                                    <div>
+                                        <label class="text-sm">Tamanho Máx: <span id="size-value">800px</span></label>
+                                        <input type="range" id="max-size-slider" min="400" max="1200" value="800" step="50" class="w-full">
+                                    </div>
+                                    <div>
+                                        <label class="text-sm">Qualidade: <span id="quality-value">85%</span></label>
+                                        <input type="range" id="quality-slider" min="50" max="100" value="85" class="w-full">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="checkbox" id="product-featured" class="rounded">
+                            <span class="text-primary">Marcar como destaque</span>
+                        </label>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button type="submit" id="submit-product-button" class="flex-1 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700" data-lang="add-product-button">Adicionar Produto</button>
+
+                        <button type="button" id="cancel-edit-button" class="hidden px-6 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-secondary rounded-lg shadow-md overflow-hidden">
+                <h3 class="text-xl font-semibold p-6 border-b border-main">Produtos Cadastrados</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-main">
+                        <thead class="bg-primary">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">Produto</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">Preço</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-product-list" class="bg-primary divide-y divide-main"></tbody>
+                    </table>
+                </div>
+                <p id="no-products-message" class="hidden text-center text-secondary py-8">Nenhum produto cadastrado ainda.</p>
+            </div>
+        </div>
+    `;
+
+    // Dar um pequeno tempo para o DOM montar e então ligar handlers
+    setTimeout(() => {
+        UI.productForm = document.getElementById('product-form');
+        UI.productIdInput = document.getElementById('product-id');
+        UI.productNameInput = document.getElementById('product-name');
+        UI.productPriceInput = document.getElementById('product-price');
+        UI.productCategoryInput = document.getElementById('product-category');
+        UI.productDescriptionInput = document.getElementById('product-description');
+        UI.productImageInput = document.getElementById('product-image');
+        UI.productFeatured = document.getElementById('product-featured');
+        UI.submitProductButton = document.getElementById('submit-product-button');
+        UI.cancelEditButton = document.getElementById('cancel-edit-button');
+        UI.productFormTitle = document.getElementById('product-form-title');
+        UI.adminProductList = document.getElementById('admin-product-list');
+        UI.noProductsMessage = document.getElementById('no-products-message');
+
+        // Hooks imagem
+        setupImageHandlers();
+
+        // botão escolher imagem
+        const chooseBtn = document.getElementById('choose-image-button');
+        if (chooseBtn) chooseBtn.addEventListener('click', () => document.getElementById('product-image')?.click());
+
+        // listeners do form
+        if (UI.productForm) UI.productForm.addEventListener('submit', handleProductSubmit);
+        if (UI.cancelEditButton) UI.cancelEditButton.addEventListener('click', resetProductForm);
+
+        // render list
+        renderProductList();
+    }, 80);
+
+    if (typeof setLanguage === 'function' && state.currentLanguage) {
+        setLanguage(state.currentLanguage);
+    }
+}
+
+function renderProductList() {
+    if (!UI.adminProductList || !UI.noProductsMessage) return;
+
+    UI.adminProductList.innerHTML = '';
+
+    if (state.products.length === 0) {
+        UI.noProductsMessage.classList.remove('hidden');
+        return;
+    } else {
+        UI.noProductsMessage.classList.add('hidden');
+    }
+
+    state.products.forEach(product => {
+        const visible = product.visible !== false; // padrão = visível
+
+        UI.adminProductList.innerHTML += `
+            <tr class="hover:bg-primary/50 transition-colors duration-200">
+                
+                <!-- Produto + Imagem -->
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <img class="h-10 w-10 rounded-full object-cover mr-4" 
+                             src="${product.imageUrl || 'https://placehold.co/100x100?text=P'}" 
+                             alt="${product.name}">
+                        <div class="text-sm font-medium text-primary">${product.name}</div>
+                    </div>
+                </td>
+
+                <!-- Preço -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary">
+                    ${CONFIG.CURRENCY_SYMBOL} ${(product.price || 0).toFixed(2)}
+                </td>
+
+                <!-- STATUS -->
+                <td class="px-6 py-4 whitespace-nowrap space-x-1">
+
+                    ${product.featured
+                        ? `<span class="px-2 inline-flex text-xs font-semibold rounded-full bg-green-100 text-green-800">Destaque</span>`
+                        : `<span class="px-2 inline-flex text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Normal</span>`
+                    }
+
+                    ${visible
+                        ? `<span class="px-2 inline-flex text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Visível</span>`
+                        : `<span class="px-2 inline-flex text-xs font-semibold rounded-full bg-red-100 text-red-800">Oculto</span>`
+                    }
+                </td>
+
+                <!-- AÇÕES -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+
+                    <button onclick="editProduct('${product.id}')"
+                        class="text-blue-600 hover:text-blue-900 transition">
+                        Editar
+                    </button>
+
+                    <button onclick="deleteProduct('${product.id}')"
+                        class="text-red-600 hover:text-red-900 transition">
+                        Excluir
+                    </button>
+
+                    <button onclick="toggleProductFeatured('${product.id}')"
+                        class="text-green-600 hover:text-green-900 transition">
+                        ${product.featured ? 'Remover Destaque' : 'Marcar Destaque'}
+                    </button>
+
+                    <button onclick="toggleProductVisibility('${product.id}')"
+                        class="text-yellow-600 hover:text-yellow-800 transition flex items-center gap-1">
+
+                        ${visible ? '👁️ Ocultar' : '👁️‍🗨️ Exibir'}
+                    </button>
+
+                </td>
+            </tr>
+        `;
+    });
+}
+
+// Setup do preview e sliders
+function setupImageHandlers() {
+    const fileInput = document.getElementById('product-image');
+    const previewContainer = document.getElementById('image-preview-container');
+    const previewImage = document.getElementById('image-preview');
+    const imageInfo = document.getElementById('image-info');
+
+    const maxSizeSlider = document.getElementById('max-size-slider');
+    const sizeValue = document.getElementById('size-value');
+
+    const qualitySlider = document.getElementById('quality-slider');
+    const qualityValue = document.getElementById('quality-value');
+
+    if (!fileInput) return;
+
+    // substituir input para remover listeners antigos
+    const newFileInput = fileInput.cloneNode(true);
+    fileInput.parentNode.replaceChild(newFileInput, fileInput);
+
+    newFileInput.addEventListener('change', function (e) {
+        const file = e.target.files[0];
+
+        if (file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Por favor, selecione apenas arquivos de imagem.');
+                return;
+            }
+
+            state.originalImageFile = file;
+
+            const reader = new FileReader();
+            reader.onload = function (evt) {
+                if (previewContainer) previewContainer.classList.remove('hidden');
+                if (previewImage) previewImage.src = evt.target.result;
+
+                if (imageInfo) {
+                    imageInfo.innerHTML = `
+                        <p><strong>Arquivo:</strong> ${file.name}</p>
+                        <p><strong>Tamanho Original:</strong> ${(file.size / 1024).toFixed(2)} KB</p>
+                    `;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    if (maxSizeSlider && sizeValue) {
+        maxSizeSlider.value = state.imageSettings.maxWidth || 800;
+        sizeValue.textContent = maxSizeSlider.value + 'px';
+        maxSizeSlider.addEventListener('input', (e) => {
+            sizeValue.textContent = e.target.value + 'px';
+            state.imageSettings.maxWidth = parseInt(e.target.value, 10);
+        });
+    }
+
+    if (qualitySlider && qualityValue) {
+        qualitySlider.value = Math.round((state.imageSettings.quality || 0.85) * 100);
+        qualityValue.textContent = qualitySlider.value + '%';
+        qualitySlider.addEventListener('input', (e) => {
+            qualityValue.textContent = e.target.value + '%';
+            state.imageSettings.quality = parseInt(e.target.value, 10) / 100;
+        });
+    }
+}
 
 // ====================================================================
-// Módulo Principal da Aplicação e Eventos
+// FUNÇÃO PARA CRIAR CADA LINHA DA TABELA ADMIN
 // ====================================================================
+function createAdminProductRow(product) {
+    // Se o produto não tem 'visible' definido, assumimos que é true (compatibilidade)
+    const isVisible = product.visible !== false; 
+    const isFeatured = product.featured;
 
+    // Estilo para destacar produtos ocultos (opcional, mas útil)
+    const rowClass = isVisible ? 'hover:bg-main' : 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100/50'; 
+    const iconClass = isVisible ? 'fas fa-eye' : 'fas fa-eye-slash';
+    const titleText = isVisible ? 'Ocultar Produto (Visível)' : 'Exibir Produto (Oculto)';
+    
+    // O template HTML para a linha da tabela
+    return `
+        <tr class="transition-colors duration-200 ${rowClass}" data-id="${product.id}">
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary">
+                ${product.name}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary">
+                ${product.category || 'N/A'}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary">
+                ${CONFIG.CURRENCY_SYMBOL} ${product.price.toFixed(2)}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <span class="${isFeatured ? 'text-green-600' : 'text-gray-500'}">
+                    ${isFeatured ? 'Sim' : 'Não'}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3 flex items-center justify-end">
+                
+                <button 
+                    onclick="toggleProductVisibility('${product.id}', ${isVisible})" 
+                    title="${titleText}"
+                    class="text-blue-500 hover:text-blue-700 transition-colors duration-200 p-1"
+                >
+                    <i class="${iconClass} text-lg"></i>
+                </button>
+
+                <button 
+                    onclick="editProduct('${product.id}')" 
+                    title="Editar Produto"
+                    class="text-brand-primary hover:text-brand-hover transition-colors duration-200 p-1"
+                >
+                    <i class="fas fa-edit"></i>
+                </button>
+
+                <button 
+                    onclick="toggleProductFeatured('${product.id}', ${isFeatured})" 
+                    title="${isFeatured ? 'Remover Destaque' : 'Marcar Destaque'}"
+                    class="${isFeatured ? 'text-yellow-500 hover:text-yellow-700' : 'text-gray-500 hover:text-gray-700'} transition-colors duration-200 p-1"
+                >
+                    <i class="fas fa-star"></i>
+                </button>
+                
+                <button 
+                    onclick="deleteProduct('${product.id}')" 
+                    title="Excluir Produto"
+                    class="text-red-500 hover:text-red-700 transition-colors duration-200 p-1"
+                >
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+}
+
+// ====================================================================
+// Eventos globais e inicialização
+// ====================================================================
 function setupEventListeners() {
-    // Formulário de Login/Registro
     if (UI.registrationForm) UI.registrationForm.addEventListener('submit', handleRegistration);
     if (UI.profilePictureInput) UI.profilePictureInput.addEventListener('change', handleProfilePictureChange);
 
-    // Navegação
+    if (UI.searchInput) {
+        UI.searchInput.addEventListener('keyup', handleSearch);
+        UI.searchInput.addEventListener('change', handleSearch);
+    }
+
     if (UI.backButton) UI.backButton.addEventListener('click', goBack);
     if (UI.settingsButton) UI.settingsButton.addEventListener('click', () => navigateToScreen('settings'));
-    
-    // Carrinho
+    if (UI.viewAllProductsButton) UI.viewAllProductsButton?.addEventListener('click', () => navigateToScreen('products'));
+
+    if (UI.userProfilePic) UI.userProfilePic.addEventListener('click', () => navigateToScreen('profile'));
+    if (UI.userProfileName) UI.userProfileName.addEventListener('click', () => navigateToScreen('profile'));
+
     if (UI.cartButton) UI.cartButton.addEventListener('click', openCartModal);
     if (UI.closeCartButton) UI.closeCartButton.addEventListener('click', closeCartModal);
     if (UI.checkoutButton) UI.checkoutButton.addEventListener('click', openOrderConfirmModal);
 
-    // Confirmação de Pedido
     if (UI.cancelOrderButton) UI.cancelOrderButton.addEventListener('click', closeOrderConfirmModal);
     if (UI.sendOrderWhatsappButton) UI.sendOrderWhatsappButton.addEventListener('click', sendOrderViaWhatsApp);
 
-    // Admin
+    if (UI.profileEditForm) UI.profileEditForm.addEventListener('submit', handleProfileEdit);
+    if (UI.logoutProfileButton) UI.logoutProfileButton.addEventListener('click', handleLogout);
+
     if (UI.adminButton) {
         UI.adminButton.addEventListener('click', () => {
             if (state.isAdmin) {
                 navigateToScreen('admin');
             } else {
-                UI.adminLoginModal.classList.remove('hidden');
-                setTimeout(() => UI.adminLoginModal.classList.remove('opacity-0'), 10);
+                if (UI.adminLoginModal) {
+                    UI.adminLoginModal.classList.remove('hidden', 'opacity-0');
+                    setTimeout(() => UI.adminLoginModal.classList.remove('opacity-0'), 10);
+                }
             }
         });
     }
+
     if (UI.adminLoginForm) UI.adminLoginForm.addEventListener('submit', handleAdminLogin);
     if (UI.closeAdminModalButton) UI.closeAdminModalButton.addEventListener('click', closeAdminModal);
-    
-    // Admin CRUD Listeners
-    if (UI.productForm) UI.productForm.addEventListener('submit', handleProductSubmit);
-    if (UI.cancelEditButton) UI.cancelEditButton.addEventListener('click', resetProductForm);
 
-    // Torna as funções globais para uso no HTML inline (ex: onclick)
     window.navigateToScreen = navigateToScreen;
     window.addToCart = addToCart;
     window.removeFromCart = removeFromCart;
     window.updateCartItemQuantity = updateCartItemQuantity;
     window.editProduct = editProduct;
     window.deleteProduct = deleteProduct;
+    window.toggleProductFeatured = toggleProductFeatured;
 }
 
 async function initializeAppUI() {
-    UI.loginSection.classList.add('hidden');
-    UI.mainAppSection.classList.remove('hidden');
-    
-    await fetchProducts(); 
-    
-    state.navigationHistory = ['home'];
-    navigateToScreen('home');
+    try {
+        UI.loginSection?.classList.add('hidden');
+        UI.mainAppSection?.classList.remove('hidden');
 
-    updateCartUI();
-    updateAdminButtonVisibility();
+        // Atualizar UI do usuário
+        if (state.user && UI.userProfileName && UI.userProfilePic) {
+            UI.userProfileName.textContent = state.user.fullName.split(' ')[0];
+            UI.userProfilePic.src = state.user.profilePicture || 'https://placehold.co/100x100';
+        }
+
+        // 1️⃣ Carregar produtos antes da navegação
+        await fetchProducts();
+
+        // 2️⃣ Garantir que produtos foram carregados
+        if (!state.products || state.products.length === 0) {
+            console.warn("Aviso: Nenhum produto carregado.");
+        }
+
+        // Resetar o histórico corretamente
+        state.navigationHistory = [];
+
+        // 3️⃣ Agora sim ir para home
+        navigateToScreen('home');
+
+        updateCartUI();
+        updateAdminVisibility();
+
+    } catch (error) {
+        console.error('Erro ao inicializar a interface:', error);
+        showNotification('Erro ao inicializar a aplicação.', 'error');
+    }
 }
 
 function initializeApp() {
     if (!window.db) {
         console.error("Firebase não inicializado.");
-        document.body.innerHTML = "<h1>Erro Crítico: A conexão com o banco de dados falhou.</h1>";
+        document.body.innerHTML = "<h1 class='text-center text-red-500 p-8'>Erro Crítico: A conexão com o banco de dados falhou.</h1>";
         return;
     }
-    
+
+    if (!verifyDOMStructure()) {
+        console.error('Inicialização abortada devido a elementos faltantes.');
+        showNotification('Erro de estrutura da página. Recarregue a página.', 'error');
+        return;
+    }
+
     initializeTheme();
+    setLanguage(state.currentLanguage);
     setupEventListeners();
-    setLanguage(state.currentLanguage); // Aplica as traduções
 
     if (state.user) {
         initializeAppUI();
     } else {
-        UI.loginSection.classList.remove('hidden');
-        UI.mainAppSection.classList.add('hidden');
+        UI.loginSection?.classList.remove('hidden');
+        UI.mainAppSection?.classList.add('hidden');
         state.navigationHistory = [];
-        UI.backButton.classList.add('hidden');
+        UI.backButton?.classList.add('hidden');
     }
-};
+}
 
-// Inicia a aplicação quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', initializeApp);
+
+// ====================================================================
+// Sistema OTA de Atualização - Nó&Laço
+// ====================================================================
+
+const APP_VERSION = "1.0.0"; 
+const VERSION_URL = "https://SEU_USUARIO.github.io/SEU_REPOSITORIO/version.json";
+
+// Verificar atualizações ao iniciar o app
+async function checkForAppUpdate() {
+    try {
+        const response = await fetch(VERSION_URL, { cache: "no-store" });
+        const data = await response.json();
+
+        if (!data.version) return;
+
+        if (data.version !== APP_VERSION) {
+            showUpdatePopup(data.version, data.changes, data.forceUpdate);
+        }
+    } catch (error) {
+        console.warn("Falha ao verificar atualização:", error);
+    }
+}
+
+function showUpdatePopup(newVersion, changes, forceUpdate = false) {
+    const popup = document.createElement("div");
+    popup.id = "update-popup";
+    popup.style = `
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 99999;
+    `;
+
+    popup.innerHTML = `
+        <div style="
+            background: white;
+            padding: 25px;
+            width: 85%;
+            max-width: 380px;
+            border-radius: 20px;
+            text-align: center;
+            font-family: Arial;
+        ">
+            <h2 style="font-size: 22px; margin-bottom: 10px; color: #1a1a1a;">
+                Atualização Disponível
+            </h2>
+
+            <p style="font-size: 16px; margin-bottom: 15px;">
+                Nova versão: <b>${newVersion}</b>
+            </p>
+
+            <p style="font-size: 14px; margin-bottom: 15px; color: gray;">
+                ${changes || "Melhorias disponíveis."}
+            </p>
+
+            <button id="update-now-btn" style="
+                width: 100%;
+                background: #0d6efd;
+                color: white;
+                padding: 12px;
+                margin-bottom: 8px;
+                border-radius: 12px;
+                font-size: 16px;
+                border: none;
+            ">Atualizar Agora</button>
+
+            ${forceUpdate ? "" : `
+                <button id="update-later-btn" style="
+                    width: 100%;
+                    background: #ddd;
+                    color: #333;
+                    padding: 12px;
+                    border-radius: 12px;
+                    font-size: 16px;
+                    border: none;
+                ">Depois</button>
+            `}
+        </div>
+    `;
+
+    document.body.appendChild(popup);
+
+    // Botão Atualizar
+    document.getElementById("update-now-btn").onclick = () => {
+        popup.remove();
+        reloadWithUpdate();
+    };
+
+    // Botão Depois
+    if (!forceUpdate) {
+        document.getElementById("update-later-btn").onclick = () => popup.remove();
+    }
+}
+
+// Limpar cache e atualizar
+function reloadWithUpdate() {
+    if (navigator.serviceWorker) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+            for (let reg of regs) reg.unregister();
+            location.reload(true);
+        });
+    } else {
+        location.reload(true);
+    }
+}
+
+// Rodar verificação após inicialização
+window.addEventListener("load", () => {
+    setTimeout(() => checkForAppUpdate(), 1500);
+});

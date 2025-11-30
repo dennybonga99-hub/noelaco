@@ -1,28 +1,40 @@
-/* style.css */
+/* style.css - Versão Melhorada */
 
-/* Definição das variáveis de cor no tema claro */
+/* ===== VARIÁVEIS DE COR ===== */
 :root {
-    --color-primary: #ffffff;      /* Fundo principal (claro) */
-    --color-secondary: #f3f4f6;    /* Fundo secundário, cards, modais (claro) */
-    --color-text-primary: #1f2937; /* Texto principal (escuro) */
-    --color-text-secondary: #6b7280; /* Texto secundário (cinza) */
-    --color-brand-primary: #ef4444; /* Vermelho/Marca principal */
-    --color-brand-hover: #dc2626;  /* Vermelho mais escuro para hover */
-    --color-border-main: #d1d5db;  /* Borda/Linha de separação */
+    --color-primary: #f8f9fa;
+    --color-secondary: #ffffff;
+    --color-text-primary: #1a202c;
+    --color-text-secondary: #718096;
+    --color-brand-primary: #ef4444;
+    --color-brand-hover: #dc2626;
+    --color-border-main: #e2e8f0;
+    
+    /* Novas variáveis para efeitos */
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
-/* Definição das variáveis de cor no tema escuro */
 .dark {
-    --color-primary: #111827;      /* Fundo principal (escuro) */
-    --color-secondary: #1f2937;    /* Fundo secundário, cards, modais (escuro) */
-    --color-text-primary: #f3f4f6; /* Texto principal (claro) */
-    --color-text-secondary: #9ca3af; /* Texto secundário (cinza claro) */
-    --color-brand-primary: #f87171; /* Vermelho/Marca principal */
-    --color-brand-hover: #ef4444;  /* Vermelho mais escuro para hover */
-    --color-border-main: #374151;  /* Borda/Linha de separação */
+    --color-primary: #0f1625;
+    --color-secondary: #1e293b;
+    --color-text-primary: #f1f5f9;
+    --color-text-secondary: #cbd5e1;
+    --color-brand-primary: #ef4444;
+    --color-brand-hover: #dc2626;
+    --color-border-main: #334155;
+    
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
-/* Mapeamento das classes do Tailwind para as variáveis */
+/* ===== MAPEAMENTO DE CLASSES ===== */
 .bg-primary { background-color: var(--color-primary); }
 .text-primary { color: var(--color-text-primary); }
 .bg-secondary { background-color: var(--color-secondary); }
@@ -32,7 +44,591 @@
 .bg-brand-primary { background-color: var(--color-brand-primary); }
 .hover\:bg-brand-hover:hover { background-color: var(--color-brand-hover); }
 
-/* Para a animação do cart modal */
+/* ===== ANIMAÇÕES GLOBAIS ===== */
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+body {
+    scroll-behavior: smooth;
+}
+
+/* ===== HEADER MELHORADO ===== */
+header {
+    backdrop-filter: blur(10px);
+    background-color: var(--color-secondary);
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+}
+
+header:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+/* Botões do header com efeitos */
+header button {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+header button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.1);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+header button:hover::before {
+    width: 200px;
+    height: 200px;
+}
+
+header button:active {
+    transform: scale(0.95);
+}
+
+/* Badge do carrinho com animação */
+#cart-item-count {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+/* Foto de perfil com borda animada */
+#user-profile-pic {
+    transition: all 0.3s ease;
+    box-shadow: 0 0 0 3px transparent;
+}
+
+#user-profile-pic:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 3px var(--color-brand-primary);
+}
+
+/* ===== INPUT DE BUSCA MELHORADO ===== */
+#search-input {
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+#search-input:focus {
+    box-shadow: var(--shadow-md);
+    transform: scale(1.02);
+}
+
+/* ===== HERO SECTION COM EFEITOS ===== */
+#home-screen .bg-brand-primary {
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-2xl);
+    transition: all 0.4s ease;
+}
+
+#home-screen .bg-brand-primary:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 30px 60px -15px rgba(239, 68, 68, 0.3);
+}
+
+#home-screen .bg-brand-primary::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        45deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.1) 50%,
+        transparent 70%
+    );
+    animation: shine 6s infinite;
+}
+
+@keyframes shine {
+    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+/* Botão do Hero com efeito glassmorphism */
+#view-all-products-button {
+    position: relative;
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#view-all-products-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
+}
+
+#view-all-products-button:hover::before {
+    left: 100%;
+}
+
+#view-all-products-button:hover {
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: var(--shadow-xl);
+}
+
+#view-all-products-button:active {
+    transform: scale(0.98);
+}
+
+/* ===== CARDS DE PRODUTO MELHORADOS ===== */
+.product-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+}
+
+.product-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--color-brand-primary), var(--color-brand-hover));
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.product-card:hover::before {
+    transform: scaleX(1);
+}
+
+.product-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: var(--shadow-2xl);
+}
+
+.product-card img {
+    transition: all 0.4s ease;
+}
+
+.product-card:hover img {
+    transform: scale(1.1);
+}
+
+/* ===== BOTÕES GERAIS MELHORADOS ===== */
+button {
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+button:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Efeito ripple nos botões */
+button::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+button:active::after {
+    width: 300px;
+    height: 300px;
+}
+
+/* ===== INPUTS MELHORADOS ===== */
+input, select, textarea {
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+input:focus, select:focus, textarea:focus {
+    box-shadow: var(--shadow-md), 0 0 0 3px rgba(239, 68, 68, 0.1);
+    transform: translateY(-1px);
+}
+
+input:hover, select:hover, textarea:hover {
+    border-color: var(--color-brand-primary);
+}
+
+/* ===== MODAIS COM ANIMAÇÃO ===== */
+#cart-modal, #order-confirm-modal, #admin-login-modal {
+    backdrop-filter: blur(8px);
+}
+
 #cart-panel {
-    transition: transform 0.3s ease-out;
+    transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    box-shadow: var(--shadow-2xl);
+}
+
+#cart-modal.show #cart-panel {
+    animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ===== CART ITEMS ANIMADOS ===== */
+.cart-item {
+    animation: fadeInUp 0.4s ease;
+    transition: all 0.3s ease;
+}
+
+.cart-item:hover {
+    transform: translateX(-5px);
+    box-shadow: var(--shadow-md);
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===== LOADING SPINNER MELHORADO ===== */
+#loading-modal {
+    backdrop-filter: blur(10px);
+}
+
+#loading-modal .flex {
+    animation: scaleIn 0.3s ease;
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ===== NOTIFICAÇÕES TOAST ===== */
+#notification-message {
+    animation: slideInFromRight 0.4s ease;
+    box-shadow: var(--shadow-xl);
+}
+
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ===== TOGGLE SWITCH DO TEMA ===== */
+#theme-toggle {
+    transition: all 0.3s ease;
+}
+
+#theme-toggle span {
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+#theme-toggle:hover {
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+/* ===== TABELAS ADMIN MELHORADAS ===== */
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    border-radius: 12px;
+}
+
+tbody tr {
+    transition: all 0.3s ease;
+}
+
+tbody tr:hover {
+    background-color: rgba(239, 68, 68, 0.05);
+    transform: scale(1.01);
+}
+
+/* ===== IMAGENS COM EFEITO ===== */
+img {
+    transition: all 0.3s ease;
+}
+
+img:hover {
+    filter: brightness(1.05);
+}
+
+/* ===== SCROLLBAR CUSTOMIZADA ===== */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-primary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-brand-primary);
+    border-radius: 5px;
+    transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-brand-hover);
+}
+
+/* ===== ANIMAÇÃO DE ENTRADA PARA SEÇÕES ===== */
+.screen {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===== EFEITO DE FOCO VISÍVEL ===== */
+*:focus-visible {
+    outline: 3px solid var(--color-brand-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* ===== RESPONSIVIDADE APRIMORADA ===== */
+@media (max-width: 768px) {
+    #cart-panel {
+        width: 100%;
+    }
+    
+    .product-card:hover {
+        transform: translateY(-4px) scale(1.01);
+    }
+}
+
+/* ===== PERFIL DE USUÁRIO COM EFEITO ===== */
+#profile-pic-large {
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-lg);
+}
+
+#profile-pic-large:hover {
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: var(--shadow-2xl);
+}
+
+/* ===== FORMULÁRIOS MELHORADOS ===== */
+form {
+    position: relative;
+}
+
+form button[type="submit"] {
+    position: relative;
+    overflow: hidden;
+}
+
+form button[type="submit"]::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+form button[type="submit"]:hover::before {
+    width: 400px;
+    height: 400px;
+}
+
+/* ===== FEATURED PRODUCTS DESTAQUE ===== */
+#featured-products-container .product-card {
+    border: 2px solid transparent;
+}
+
+#featured-products-container .product-card:hover {
+    border-color: var(--color-brand-primary);
+}
+
+/* ===== UPLOAD DE FOTO DE PERFIL ===== */
+#profile-picture-upload-area {
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-md);
+}
+
+#profile-picture-upload-area:hover {
+    transform: scale(1.05);
+    border-color: var(--color-brand-primary);
+    box-shadow: var(--shadow-xl), 0 0 20px rgba(239, 68, 68, 0.2);
+}
+
+/* ===== ENDEREÇOS SALVOS ===== */
+#saved-addresses-container > div {
+    transition: all 0.3s ease;
+    padding: 12px;
+    border-radius: 8px;
+}
+
+#saved-addresses-container > div:hover {
+    background-color: rgba(239, 68, 68, 0.05);
+    transform: translateX(5px);
+}
+
+/* ===== BOTÃO DE VOLTAR ===== */
+#back-button {
+    backdrop-filter: blur(10px);
+    border-radius: 50%;
+    padding: 8px;
+}
+
+#back-button:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* ===== REMOVER SCROLLBAR PARA SLIDERS ===== */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    scrollbar-width: none;
+}
+
+/* ===== DOTS DO SLIDER ===== */
+.featured-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--color-text-secondary);
+    transition: all 0.3s ease;
+}
+
+.featured-dot.active {
+    width: 22px;
+    background: var(--color-brand-primary);
+}
+
+/* ===== FEATURED SLIDER CUSTOM ===== */
+#featured-slider {
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+    padding: 12px;
+}
+
+#featured-slider .featured-item {
+    scroll-snap-align: center;
+    min-width: 260px;
+    max-width: 260px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+#featured-slider.dragging {
+    cursor: grabbing;
+}
+
+/* dots */
+#featured-dots {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    margin-top: .5rem;
+}
+.featured-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--color-text-secondary);
+    border: none;
+    transition: all 0.25s ease;
+    opacity: 0.9;
+}
+.featured-dot:hover { transform: scale(1.1); }
+.featured-dot.active {
+    width: 22px;
+    background: var(--color-brand-primary);
+}
+
+/* hide native scrollbar */
+#featured-slider.no-scrollbar::-webkit-scrollbar { display: none; }
+#featured-slider.no-scrollbar { scrollbar-width: none; }
+
+/* responsive */
+@media (max-width: 640px) {
+    #featured-slider .featured-item { min-width: 220px; max-width: 220px; }
+}
+
+/* small visual tweak for arrow buttons */
+#featured-prev, #featured-next {
+    background: rgba(0,0,0,0.22);
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    box-shadow: var(--shadow-sm);
 }
