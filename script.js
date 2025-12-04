@@ -853,30 +853,29 @@ function prepareOrderMessage() {
         const subtotal = (item.price * item.quantity).toFixed(2);
         return `
 ${index + 1}) *${item.name}*
-• Quantidade: ${item.quantity}
-• Subtotal: ${CONFIG.CURRENCY_SYMBOL} ${subtotal}
+- Quantidade: ${item.quantity}
+- Subtotal: ${CONFIG.CURRENCY_SYMBOL} ${subtotal}
 `;
     }).join("");
 
     const message = `
-🧾 *NOVO PEDIDO – Nó&Laço*
+ *NOVO PEDIDO – Nó&Laço*
 
-👤 *Cliente:* ${state.user.fullName}
-📞 *Telefone:* ${state.user.phoneNumber}
-📍 *Endereço de Entrega:* ${deliveryAddress}
+ *Cliente:* ${state.user.fullName}
+ *Telefone:* ${state.user.phoneNumber}
+ *Endereço:* ${deliveryAddress}
 
-🗺️ *Ver no Mapa:*
-${mapUrl}
+ *Mapa:* ${mapUrl}
 
-━━━━━━━━━━━━━━━━━━
-📦 *Itens do Pedido:*
+------------------------------
+ *Itens do Pedido:*
 ${formattedItems}
-━━━━━━━━━━━━━━━━━━
+------------------------------
 
-💳 *Total a Pagar:* *${CONFIG.CURRENCY_SYMBOL} ${total.toFixed(2)}*
+ *Total:* *${CONFIG.CURRENCY_SYMBOL} ${total.toFixed(2)}*
 
-🙏 Obrigado!
-Por favor, confirme os detalhes de pagamento e entrega.
+ Obrigado!
+Por favor confirme o pagamento e entrega.
     `;
 
     return encodeURIComponent(message.trim());
@@ -1266,10 +1265,8 @@ function renderHomeScreen() {
     const featuredContainer = document.getElementById('featured-products-container');
     const noFeaturedMessage = document.getElementById('no-featured-message');
 
-    if (!featuredContainer || !noFeaturedMessage) {
-        console.warn("Conteúdo incompleto. Exibindo tela mesmo assim.");
-        homeScreen.classList.remove('hidden');
-        return;
+    if (!state.products || state.products.length === 0) {
+        return; // NÃO renderiza nada até o snapshot vir completo
     }
 
     homeScreen.classList.remove('hidden');
@@ -2014,30 +2011,45 @@ document.addEventListener('DOMContentLoaded', initializeApp);
 // Sistema OTA de Atualização - Nó&Laço
 // ====================================================================
 
-const APP_VERSION = "1.0.0"; 
-const VERSION_URL = "https://SEU_USUARIO.github.io/SEU_REPOSITORIO/version.json";
+// Versão atual da aplicação
+const APP_VERSION = "1.0.0";
 
-// Verificar atualizações ao iniciar o app
+// URL REAL do version.json hospedado no GitHub Pages
+const VERSION_URL = "https://teu-usuario.github.io/teu-repo/version.json";
+
 async function checkForAppUpdate() {
-    // Só roda em produção (GitHub Pages)
-    const isLocalhost = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost";
+    // Ignora verificação no localhost (ambiente de desenvolvimento)
+    const isLocalhost =
+        window.location.hostname.includes("127.0.0.1") ||
+        window.location.hostname.includes("localhost");
 
     if (isLocalhost) {
-        console.log("Modo local detectado: verificação de atualização ignorada.");
+        console.log("Modo local: verificação de versão ignorada.");
         return;
     }
 
     try {
         const response = await fetch(VERSION_URL, { cache: "no-store" });
+
+        // Caso a URL não exista
+        if (!response.ok) {
+            console.warn("Arquivo version.json não encontrado no servidor.");
+            return;
+        }
+
         const data = await response.json();
 
-        if (!data.version) return;
+        if (!data.version) {
+            console.warn("version.json inválido ou incompleto.");
+            return;
+        }
 
         if (data.version !== APP_VERSION) {
             showUpdatePopup(data.version, data.changes, data.forceUpdate);
         }
+
     } catch (error) {
-        console.warn("Falha ao verificar atualização:", error);
+        console.warn("Falha ao verificar atualização OTA:", error.message);
     }
 }
 
@@ -2051,7 +2063,7 @@ function showUpdatePopup(newVersion, changes, forceUpdate = false) {
         display: flex;
         justify-content: center;
         align-items: center;
-        z-index: 99999;
+        z-index: 999999;
     `;
 
     popup.innerHTML = `
@@ -2069,11 +2081,11 @@ function showUpdatePopup(newVersion, changes, forceUpdate = false) {
             </h2>
 
             <p style="font-size: 16px; margin-bottom: 15px;">
-                Nova versão: <b>${newVersion}</b>
+                Nova versão disponível: <b>${newVersion}</b>
             </p>
 
             <p style="font-size: 14px; margin-bottom: 15px; color: gray;">
-                ${changes || "Melhorias disponíveis."}
+                ${changes || "Melhorias aplicadas."}
             </p>
 
             <button id="update-now-btn" style="
@@ -2087,37 +2099,33 @@ function showUpdatePopup(newVersion, changes, forceUpdate = false) {
                 border: none;
             ">Atualizar Agora</button>
 
-            ${forceUpdate ? "" : `
-                <button id="update-later-btn" style="
-                    width: 100%;
-                    background: #ddd;
-                    color: #333;
-                    padding: 12px;
-                    border-radius: 12px;
-                    font-size: 16px;
-                    border: none;
-                ">Depois</button>
-            `}
+            ${!forceUpdate ? `
+            <button id="update-later-btn" style="
+                width: 100%;
+                background: #ddd;
+                color: #333;
+                padding: 12px;
+                border-radius: 12px;
+                font-size: 16px;
+                border: none;
+            ">Depois</button>` : ""}
         </div>
     `;
 
     document.body.appendChild(popup);
 
-    // Botão Atualizar
     document.getElementById("update-now-btn").onclick = () => {
         popup.remove();
         reloadWithUpdate();
     };
 
-    // Botão Depois
     if (!forceUpdate) {
         document.getElementById("update-later-btn").onclick = () => popup.remove();
     }
 }
 
-// Limpar cache e atualizar
 function reloadWithUpdate() {
-    if (navigator.serviceWorker) {
+    if ("serviceWorker" in navigator) {
         navigator.serviceWorker.getRegistrations().then(regs => {
             for (let reg of regs) reg.unregister();
             location.reload(true);
@@ -2127,7 +2135,7 @@ function reloadWithUpdate() {
     }
 }
 
-// Rodar verificação após inicialização
+// Inicialização
 window.addEventListener("load", () => {
     setTimeout(() => checkForAppUpdate(), 1500);
 });
