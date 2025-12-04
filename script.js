@@ -624,36 +624,30 @@ function handleProfileEdit(event) {
 // ====================================================================
 // Produtos / Renderização
 // ====================================================================
-async function fetchProducts() {
-    toggleLoading(true, 'loading-products');
+function listenToProducts() {
+    const { collection, query, orderBy, onSnapshot } = window.firebase;
+    const db = window.db;
 
-    try {
-        const { collection, query, orderBy, getDocs } = window.firebase;
-        const db = window.db;
+    const q = query(
+        collection(db, "products"),
+        orderBy("createdAt", "desc")
+    );
 
-        const q = query(
-            collection(db, "products"),
-            orderBy("createdAt", "desc")
-        );
-
-        const querySnapshot = await getDocs(q);
-
-        state.products = querySnapshot.docs.map(doc => {
+    onSnapshot(q, (snapshot) => {
+        state.products = snapshot.docs.map(doc => {
             const data = doc.data();
             return {
                 id: doc.id,
                 ...data,
-                // 🔥 Garantir que todos os produtos tenham "visible"
                 visible: data.visible ?? true
             };
         });
 
-    } catch (error) {
-        console.error("Erro ao buscar produtos: ", error);
-        showNotification('Não foi possível carregar os produtos.', 'error');
-    } finally {
-        toggleLoading(false);
-    }
+        // 🔥 Atualiza telas automaticamente
+        renderHomeScreen();
+        renderProducts(state.products);
+        if (state.isAdmin) renderAdminScreen();
+    });
 }
 
 function renderProductCard(product) {
@@ -1072,7 +1066,7 @@ async function handleProductSubmit(e) {
         }
 
         // Atualizar lista local e UI
-        await fetchProducts();
+        listenToProducts();
         renderAdminScreen();
         resetProductForm();
     } catch (error) {
@@ -1121,7 +1115,7 @@ async function deleteProduct(productId) {
 
         await deleteDoc(doc(db, 'products', productId));
         showNotification('Produto excluído com sucesso!', 'success');
-        await fetchProducts();
+        listenToProducts();
         renderAdminScreen();
     } catch (error) {
         console.error("Erro ao excluir produto: ", error);
@@ -1152,7 +1146,7 @@ async function toggleProductVisibility(productId, isCurrentlyVisible) {
         });
 
         // Após a atualização, recarrega os dados e a tela de Admin
-        await fetchProducts(); 
+        listenToProducts(); 
         renderAdminScreen();
         
         showNotification(newVisibleStatus ? 'Produto definido como VISÍVEL.' : 'Produto definido como OCULTO.', 'success');
@@ -1180,7 +1174,7 @@ async function toggleProductFeatured(productId) {
         await updateDoc(ref, { featured: newFeatured, updatedAt: new Date().toISOString() });
 
         // atualizar localmente e na UI
-        await fetchProducts();
+        listenToProducts();
         renderAdminScreen();
         showNotification(newFeatured ? 'Produto marcado como destaque.' : 'Produto removido dos destaques.', 'success');
     } catch (error) {
@@ -1352,37 +1346,208 @@ function renderProfileScreen() {
         return;
     }
 
-    if (UI.profilePicLarge) {
-        UI.profilePicLarge.src = state.user.profilePicture || 'https://placehold.co/150x150';
-    }
-    if (UI.profileNameDisplay) {
-        UI.profileNameDisplay.textContent = state.user.fullName;
-    }
+    const profileScreen = document.getElementById('profile-screen');
+    if (!profileScreen) return;
 
-    if (UI.profileFullNameInput) {
-        UI.profileFullNameInput.value = state.user.fullName || '';
-    }
-    if (UI.profilePhoneNumberInput) {
-        UI.profilePhoneNumberInput.value = state.user.phoneNumber || '';
-    }
+    profileScreen.innerHTML = `
+        <div class="max-w-xl mx-auto bg-secondary p-8 rounded-xl shadow-2xl space-y-6">
+            <h2 class="text-3xl font-bold text-center text-brand-primary" data-lang="profile-title">Meu Perfil</h2>
 
-    const address = state.user.deliveryAddress;
-    if (UI.savedAddressesContainer) {
-        UI.savedAddressesContainer.innerHTML = '';
+            <div class="flex flex-col items-center border-b pb-6 border-main">
+                <img id="profile-pic-large" src="${state.user.profilePicture || 'https://placehold.co/150x150'}"
+                     alt="Perfil"
+                     class="w-32 h-32 rounded-full object-cover border-4 border-brand-primary mb-3 cursor-pointer transition-transform duration-300 hover:scale-105">
+                <h3 id="profile-name-display" class="text-xl font-semibold text-primary mb-2">${state.user.fullName}</h3>
+                <button id="change-profile-pic-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                    Alterar Foto
+                </button>
+                <input type="file" id="profile-picture-input" class="hidden" accept="image/*">
+            </div>
 
-        if (address) {
-            UI.savedAddressesContainer.innerHTML = `
-                <div class="bg-primary p-3 rounded-lg flex justify-between items-center shadow-sm">
-                    <span class="text-sm text-primary font-medium">${address} (Padrão)</span>
-                    <button class="text-blue-500 hover:text-blue-700 text-sm">Editar</button>
+            <form id="profile-edit-form" class="space-y-4" novalidate>
+                <div>
+                    <label for="profile-full-name" class="block text-sm font-medium text-secondary">Nome Completo</label>
+                    <input type="text" id="profile-full-name" required class="mt-1 block w-full p-3 border border-main rounded-lg bg-primary text-primary focus:ring-brand-primary focus:border-brand-primary" value="${state.user.fullName}" autocomplete="name">
                 </div>
-            `;
-        } else {
-            UI.savedAddressesContainer.innerHTML = `<p class="text-secondary" data-lang="no-addresses-msg">Nenhum endereço salvo.</p>`;
+                <div>
+                    <label for="profile-phone-number" class="block text-sm font-medium text-secondary">Telefone (WhatsApp)</label>
+                    <input type="tel" id="profile-phone-number" required class="mt-1 block w-full p-3 border border-main rounded-lg bg-primary text-primary focus:ring-brand-primary focus:border-brand-primary" value="${state.user.phoneNumber || ''}" autocomplete="tel">
+                </div>
+                
+                <button type="submit" id="save-profile-button" data-lang="save-profile-button"
+                        class="w-full py-3 px-4 rounded-xl text-lg font-semibold text-white bg-blue-500 hover:bg-blue-600 transition-colors">
+                    Salvar Alterações
+                </button>
+            </form>
+
+            <div class="pt-6 border-t border-main">
+                 <h4 class="text-xl font-bold text-primary mb-3" data-lang="addresses-title">Meus Endereços</h4>
+                 <div id="saved-addresses-container" class="space-y-3">
+                     ${state.user.deliveryAddress
+                        ? `<div class="bg-primary p-3 rounded-lg flex justify-between items-center shadow-sm">
+                                <span class="text-sm text-primary font-medium">${state.user.deliveryAddress} (Padrão)</span>
+                                <button class="text-blue-500 hover:text-blue-700 text-sm">Editar</button>
+                           </div>`
+                        : `<p class="text-secondary" data-lang="no-addresses-msg">Nenhum endereço salvo.</p>`}
+                 </div>
+                 <button id="add-address-button" class="mt-4 w-full py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-hover transition-colors">
+                     + Adicionar Novo Endereço
+                 </button>
+            </div>
+
+            <button id="logout-profile-button" data-lang="logout-button-profile" class="w-full py-3 px-4 rounded-xl text-lg font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors duration-300 mt-6">
+                 Sair da Conta
+            </button>
+        </div>
+
+        <!-- MODAL MODERNO DE PREVIEW -->
+        <div id="profile-pic-modal" class="fixed inset-0 hidden justify-center items-center bg-black bg-opacity-70 z-50 opacity-0 transition-opacity duration-300">
+            <div class="relative">
+                <img id="profile-pic-modal-img" class="max-w-full max-h-[80vh] rounded-lg shadow-lg transform scale-90 transition-transform duration-300">
+                <button id="close-modal-btn" class="absolute top-2 right-2 text-white text-2xl font-bold hover:text-red-500">&times;</button>
+            </div>
+        </div>
+    `;
+
+    const profilePic = document.getElementById('profile-pic-large');
+    const changeBtn = document.getElementById('change-profile-pic-btn');
+    const fileInput = document.getElementById('profile-picture-input');
+    const modal = document.getElementById('profile-pic-modal');
+    const modalImg = document.getElementById('profile-pic-modal-img');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+
+    // Abrir modal com animação
+    profilePic.addEventListener('click', () => {
+        modalImg.src = profilePic.src;
+        modal.classList.remove('hidden');
+        setTimeout(() => modal.classList.add('opacity-100'), 10);
+        modalImg.classList.add('scale-100');
+    });
+
+    // Fechar modal
+    const closeModal = () => {
+        modal.classList.remove('opacity-100');
+        modalImg.classList.remove('scale-100');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    };
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal || e.target === closeModalBtn) closeModal();
+    });
+    closeModalBtn.addEventListener('click', closeModal);
+
+    // Abrir seletor de arquivo
+    changeBtn.addEventListener('click', () => fileInput.click());
+
+    // Upload Cloudinary
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file || !file.type.startsWith('image/')) return;
+
+        // Preview local imediato
+        const reader = new FileReader();
+        reader.onload = (evt) => profilePic.src = evt.target.result;
+        reader.readAsDataURL(file);
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', CONFIG.CLOUDINARY_UPLOAD_PRESET);
+
+        try {
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${CONFIG.CLOUDINARY_CLOUD_NAME}/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            state.user.profilePicture = data.secure_url;
+            localStorage.setItem('currentUser', JSON.stringify(state.user));
+            showNotification('Foto de perfil atualizada com sucesso!', 'success');
+        } catch (err) {
+            console.error(err);
+            showNotification('Falha ao enviar a foto. Tente novamente.', 'error');
         }
-    }
+    });
+
+    // Salvar alterações do perfil
+    const profileForm = document.getElementById('profile-edit-form');
+    profileForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const fullName = document.getElementById('profile-full-name').value.trim();
+        const phoneNumber = document.getElementById('profile-phone-number').value.trim();
+
+        state.user.fullName = fullName;
+        state.user.phoneNumber = phoneNumber;
+
+        // Atualizar exibição imediata
+        if (UI.profileNameDisplay) UI.profileNameDisplay.textContent = fullName;
+        if (UI.userProfileName) UI.userProfileName.textContent = fullName.split(' ')[0];
+
+        localStorage.setItem('currentUser', JSON.stringify(state.user));
+        showNotification('Perfil atualizado com sucesso!', 'success');
+    });
 
     setLanguage(state.currentLanguage);
+}
+
+function setupProfilePictureModal() {
+    // Evita duplicar modal
+    if (document.getElementById('profile-pic-modal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'profile-pic-modal';
+    modal.style = `
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        display: none;
+        flex-direction: column;
+    `;
+
+    modal.innerHTML = `
+        <img id="profile-pic-preview" src="${state.user.profilePicture || 'https://placehold.co/150x150'}" 
+             class="max-w-xs max-h-96 rounded-lg mb-4 object-cover border-4 border-white">
+        <input type="file" id="profile-pic-input" accept="image/*" class="mb-3">
+        <button id="close-profile-pic-modal" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Fechar</button>
+    `;
+
+    document.body.appendChild(modal);
+
+    const input = modal.querySelector('#profile-pic-input');
+    const preview = modal.querySelector('#profile-pic-preview');
+    const closeBtn = modal.querySelector('#close-profile-pic-modal');
+
+    // Abrir modal
+    modal.style.display = 'flex';
+
+    // Fechar modal
+    closeBtn.onclick = () => modal.style.display = 'none';
+
+    // Trocar foto
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file || !file.type.startsWith('image/')) return alert('Selecione uma imagem válida.');
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            preview.src = evt.target.result;
+            UI.profilePicLarge.src = evt.target.result;
+            // Salvar no estado ou enviar para servidor
+            state.profilePictureFile = file;
+        };
+        reader.readAsDataURL(file);
+    };
+
+    // Inicialmente escondido
+    modal.style.display = 'none';
+}
+
+function openProfilePictureModal() {
+    const modal = document.getElementById('profile-pic-modal');
+    if (modal) modal.style.display = 'flex';
 }
 
 // Render admin screen e inicializa handlers de imagem e lista de produtos
@@ -1799,12 +1964,7 @@ async function initializeAppUI() {
         }
 
         // 1️⃣ Carregar produtos antes da navegação
-        await fetchProducts();
-
-        // 2️⃣ Garantir que produtos foram carregados
-        if (!state.products || state.products.length === 0) {
-            console.warn("Aviso: Nenhum produto carregado.");
-        }
+        listenToProducts();
 
         // Resetar o histórico corretamente
         state.navigationHistory = [];
@@ -1859,6 +2019,14 @@ const VERSION_URL = "https://SEU_USUARIO.github.io/SEU_REPOSITORIO/version.json"
 
 // Verificar atualizações ao iniciar o app
 async function checkForAppUpdate() {
+    // Só roda em produção (GitHub Pages)
+    const isLocalhost = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost";
+
+    if (isLocalhost) {
+        console.log("Modo local detectado: verificação de atualização ignorada.");
+        return;
+    }
+
     try {
         const response = await fetch(VERSION_URL, { cache: "no-store" });
         const data = await response.json();
