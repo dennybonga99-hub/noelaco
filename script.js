@@ -2015,7 +2015,7 @@ document.addEventListener('DOMContentLoaded', initializeApp);
 const APP_VERSION = "1.0.0";
 
 // URL REAL do version.json hospedado no GitHub Pages
-const VERSION_URL = "https://teu-usuario.github.io/teu-repo/version.json";
+const VERSION_URL = "https://dennybonga99-hub.github.io/noelaco/version.json";
 
 async function checkForAppUpdate() {
     // Ignora verificação no localhost (ambiente de desenvolvimento)
