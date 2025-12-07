@@ -8,8 +8,7 @@
 const CONFIG = {
     CLOUDINARY_CLOUD_NAME: 'ddjpvbggk',
     CLOUDINARY_UPLOAD_PRESET: 'nodelaco_preset',
-    ADMIN_WHATSAPP_NUMBER: '258878384914',
-    INSECURE_ADMIN_CODE: '669900',
+    ADMIN_WHATSAPP_NUMBERS: ['258878384914', '258844089776'], // Números de administradores
     CURRENCY_SYMBOL: 'MZN',
     VALID_MZ_PREFIXES: ['82', '83', '84', '85', '86', '87'],
 };
@@ -1257,9 +1256,11 @@ function handleSearch(event) {
 // ====================================================================
 function renderHomeScreen() {
     const homeScreen = UI.screens['home'];
+
+    // Verificação defensiva
     if (!homeScreen) {
-        console.error("Erro: #home-screen não encontrada.");
-        return;
+        console.warn("Elemento #home-screen não encontrado. A renderização foi abortada.");
+        return; // interrompe a função sem lançar erro
     }
 
     const featuredContainer = document.getElementById('featured-products-container');
@@ -1269,16 +1270,24 @@ function renderHomeScreen() {
         return; // NÃO renderiza nada até o snapshot vir completo
     }
 
-    homeScreen.classList.remove('hidden');
-    featuredContainer.innerHTML = '';
+    // Manipula a classe apenas se homeScreen existir
+    if (homeScreen.classList) {
+        homeScreen.classList.remove('hidden');
+    }
+
+    if (featuredContainer) {
+        featuredContainer.innerHTML = '';
+    }
 
     const featuredProducts = state.products.filter(p => p.featured && p.visible !== false);
 
     if (featuredProducts.length > 0) {
-        noFeaturedMessage.classList.add('hidden');
-        featuredContainer.innerHTML = featuredProducts.slice(0, 3).map(renderProductCard).join('');
+        if (noFeaturedMessage?.classList) noFeaturedMessage.classList.add('hidden');
+        if (featuredContainer) {
+            featuredContainer.innerHTML = featuredProducts.slice(0, 3).map(renderProductCard).join('');
+        }
     } else {
-        noFeaturedMessage.classList.remove('hidden');
+        if (noFeaturedMessage?.classList) noFeaturedMessage.classList.remove('hidden');
     }
 
     const viewAllBtn = document.getElementById('view-all-products-button');
@@ -1286,7 +1295,8 @@ function renderHomeScreen() {
         viewAllBtn.onclick = () => navigateToScreen('products');
     }
 
-    setLanguage(state.currentLanguage);}
+    setLanguage(state.currentLanguage);
+}
 
 function renderSettingsScreen() {
     const settingsScreen = UI.screens['settings'];
