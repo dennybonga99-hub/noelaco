@@ -6,10 +6,17 @@
 // Módulo de Configuração e Estado Global
 // ====================================================================
 const CONFIG = {
-    CLOUDINARY_CLOUD_NAME: 'ddjpvbggk',
-    CLOUDINARY_UPLOAD_PRESET: 'nodelaco_preset',
-    ADMIN_WHATSAPP_NUMBERS: ['258878384914', '258844089776'],
-    ADMIN_WHATSAPP_NUMBER: '258844089776',
+  CLOUDINARY_CLOUD_NAME: 'ddjpvbggk',
+  CLOUDINARY_UPLOAD_PRESET: 'nodelaco_preset',
+
+  // Aqui ficam TODOS os números de administradores
+  ADMIN_WHATSAPP_NUMBERS: [
+    '258878384914',   // Admin principal
+    '258844089776'     // Admin secundário
+  ],
+
+  // opcional: o primeiro continua como “principal”
+  ADMIN_WHATSAPP_NUMBER: '258878384914',
     CURRENCY_SYMBOL: 'MZN',
     VALID_MZ_PREFIXES: ['82', '83', '84', '85', '86', '87'],
 };
@@ -577,7 +584,7 @@ async function handleRegistration(event) {
         const userRef = doc(db, 'users', phoneNumber);
         const docSnap = await getDoc(userRef);
 
-        const isAdministrator = phoneNumber === CONFIG.ADMIN_WHATSAPP_NUMBER;
+        const isAdministrator = CONFIG.ADMIN_WHATSAPP_NUMBERS.includes(phoneNumber);
 
         let userData;
         if (docSnap.exists()) {
@@ -901,6 +908,13 @@ Por favor confirme o pagamento e entrega.
     `;
 
     return encodeURIComponent(message.trim());
+}
+
+function sendOrderToAdmins(message) {
+    CONFIG.ADMIN_WHATSAPP_NUMBERS.forEach(number => {
+        const whatsappUrl = `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, "_blank");
+    });
 }
 
 function sendOrderViaWhatsApp() {
