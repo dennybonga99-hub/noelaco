@@ -8,7 +8,8 @@
 const CONFIG = {
     CLOUDINARY_CLOUD_NAME: 'ddjpvbggk',
     CLOUDINARY_UPLOAD_PRESET: 'nodelaco_preset',
-    ADMIN_WHATSAPP_NUMBERS: ['258878384914', '258844089776'], // Números de administradores
+    ADMIN_WHATSAPP_NUMBERS: ['258878384914', '258844089776'],
+    ADMIN_WHATSAPP_NUMBER: '258844089776',
     CURRENCY_SYMBOL: 'MZN',
     VALID_MZ_PREFIXES: ['82', '83', '84', '85', '86', '87'],
 };
@@ -147,6 +148,46 @@ function verifyDOMStructure() {
     return true;
 }
 
+const LANG_ALIASES = {
+  'pt-br': 'pt',
+  'pt-pt': 'pt',
+  'pt': 'pt',
+  'en-us': 'en',
+  'en': 'en'
+};
+
+function setLanguage(lang) {
+    lang = (lang || '').toString().toLowerCase();
+    lang = LANG_ALIASES[lang] || lang;
+
+    state.currentLanguage = lang;
+    localStorage.setItem('appLang', lang);
+
+    document.querySelectorAll('[data-lang]').forEach(element => {
+        const key = element.getAttribute('data-lang');
+        if (translations[lang] && translations[lang][key]) {
+            if (element.tagName === 'INPUT' && element.hasAttribute('placeholder')) {
+                element.placeholder = translations[lang][key];
+            } else {
+                element.textContent = translations[lang][key];
+            }
+        }
+    });
+
+    // garantir título
+    if (translations[lang] && translations[lang]['app-title']) {
+        document.title = translations[lang]['app-title'];
+    }
+
+    // sincroniza select (aceita pt-br ou pt)
+    const langSelect = document.getElementById('lang-select') || document.getElementById('language-select');
+    if (langSelect) {
+        const opt = [...langSelect.options].find(o => o.value.toLowerCase().startsWith(lang));
+        if (opt) langSelect.value = opt.value;
+        else langSelect.value = lang;
+    }
+}
+
 // ====================================================================
 // Traduções e Utilitários
 // ====================================================================
@@ -236,24 +277,6 @@ const translations = {
         'address-label': 'Confirm your delivery location',
     }
 };
-
-function setLanguage(lang) {
-    state.currentLanguage = lang;
-    localStorage.setItem('appLang', lang);
-
-    document.querySelectorAll('[data-lang]').forEach(element => {
-        const key = element.getAttribute('data-lang');
-        if (translations[lang] && translations[lang][key]) {
-            if (element.tagName === 'INPUT' && element.hasAttribute('placeholder')) {
-                element.placeholder = translations[lang][key];
-            } else if (element.tagName === 'TITLE') {
-                document.title = translations[lang][key];
-            } else {
-                element.textContent = translations[lang][key];
-            }
-        }
-    });
-}
 
 function toggleLoading(show, messageKey = 'loading') {
     if (!UI.loadingModal || !UI.loadingMessage) return;
@@ -1331,7 +1354,7 @@ function renderSettingsScreen() {
         themeToggle.addEventListener('change', e => applyTheme(e.target.checked));
     }
 
-    const langSelect = document.getElementById('lang-select');
+    const langSelect = document.getElementById('lang-select') || document.getElementById('language-select');
     if (langSelect) {
         langSelect.value = state.currentLanguage;
         langSelect.addEventListener('change', e => {
