@@ -11,12 +11,12 @@ const CONFIG = {
 
   // Aqui ficam TODOS os números de administradores
   ADMIN_WHATSAPP_NUMBERS: [
-    '258878384914',   // Admin principal
-    '258844089776'     // Admin secundário
+    '258873319854',   // Admin principal
+    '258878384914'     // Admin secundário
   ],
 
   // opcional: o primeiro continua como “principal”
-  ADMIN_WHATSAPP_NUMBER: '258878384914',
+  ADMIN_WHATSAPP_NUMBER: '258873319854',
     CURRENCY_SYMBOL: 'MZN',
     VALID_MZ_PREFIXES: ['82', '83', '84', '85', '86', '87'],
 };
