@@ -1,35 +1,35 @@
 // ====================================================================
-// Nó&Laço - app.js (versão corrigida e funcional)
+// Nó&Laço - script.js (Production Ready & Bug Fixed)
 // ====================================================================
 
 // ====================================================================
-// Módulo de Configuração e Estado Global
+// CONFIGURAÇÃO
 // ====================================================================
 const CONFIG = {
-  CLOUDINARY_CLOUD_NAME: 'ddjpvbggk',
-  CLOUDINARY_UPLOAD_PRESET: 'nodelaco_preset',
-
-  // Aqui ficam TODOS os números de administradores
-  ADMIN_WHATSAPP_NUMBERS: [
-    '258873319854',   // Admin principal
-    '258878384914'     // Admin secundário
-  ],
-
-  // opcional: o primeiro continua como “principal”
-  ADMIN_WHATSAPP_NUMBER: '258873319854',
+    CLOUDINARY_CLOUD_NAME: 'ddjpvbggk',
+    CLOUDINARY_UPLOAD_PRESET: 'nodelaco_preset',
+    ADMIN_WHATSAPP_NUMBERS: [
+        '258873319854',   // Admin principal
+        '258878384914'    // Admin secundário
+    ],
+    ADMIN_WHATSAPP_NUMBER: '258873319854',
     CURRENCY_SYMBOL: 'MZN',
     VALID_MZ_PREFIXES: ['82', '83', '84', '85', '86', '87'],
+    ADMIN_HASH: 'MTIzNDU2', 
+    VERSION_URL: "https://dennybonga99-hub.github.io/noelaco/version.json",
+    APP_VERSION: "1.0.2"
 };
 
 const state = {
     user: JSON.parse(localStorage.getItem('currentUser')) || null,
-
     get isAdmin() {
         return this.user && this.user.role === 'admin';
     },
-
     cart: JSON.parse(localStorage.getItem('cart')) || [],
+    favorites: JSON.parse(localStorage.getItem('favorites')) || [], 
     products: [],
+    currentCategory: 'all', 
+    searchTerm: '', 
     currentLanguage: localStorage.getItem('appLang') || 'pt',
     navigationHistory: [],
     profilePictureFile: null,
@@ -37,34 +37,44 @@ const state = {
     originalImageFile: null,
     imageSettings: { maxWidth: 800, quality: 0.85 },
     lastScrollPosition: 0,
+    carouselInterval: null,
+    adminView: 'products', // 'products' ou 'orders'
+    map: null,
+    mapMarker: null,
+    selectedLocation: null,
+    deliveryCoordinates: null // Armazena {lat, lng} para o link do WhatsApp
 };
 
 // ====================================================================
-// Módulo de Seletores de UI (referências atualizadas)
+// HELPERS
 // ====================================================================
-const UI = {
+const getUI = () => ({
     loadingModal: document.getElementById('loading-modal'),
     loadingMessage: document.getElementById('loading-message'),
     notificationMessage: document.getElementById('notification-message'),
     loginSection: document.getElementById('login-section'),
     mainAppSection: document.getElementById('main-app-section'),
     backButton: document.getElementById('back-button'),
-
     cartButton: document.getElementById('cart-button'),
     cartItemCount: document.getElementById('cart-item-count'),
     adminButton: document.getElementById('admin-button'),
     settingsButton: document.getElementById('settings-button'),
     searchInput: document.getElementById('search-input'),
-
     userProfilePic: document.getElementById('user-profile-pic'),
     userProfileName: document.getElementById('user-profile-name'),
-
+    productGrid: document.getElementById('product-grid'),
+    categoryFilters: document.getElementById('category-filters'),
+    productDetailContent: document.getElementById('product-detail-screen'),
+    cartModal: document.getElementById('cart-modal'),
+    cartPanel: document.getElementById('cart-panel'),
+    cartItemsContainer: document.getElementById('cart-items'),
+    cartTotal: document.getElementById('cart-total'),
+    checkoutButton: document.getElementById('checkout-button'),
+    adminLoginModal: document.getElementById('admin-login-modal'),
+    userProfileContainer: document.getElementById('user-profile-container'),
+    // Elementos do Formulário de Login
     registrationForm: document.getElementById('registration-form'),
     profilePictureInput: document.getElementById('profile-picture'),
-    defaultProfileIcon: document.getElementById('default-profile-icon'),
-    profilePreviewContainer: document.getElementById('profile-preview-container'),
-    profilePreview: document.getElementById('profile-preview'),
-
     screens: {
         home: document.getElementById('home-screen'),
         products: document.getElementById('products-screen'),
@@ -72,226 +82,65 @@ const UI = {
         settings: document.getElementById('settings-screen'),
         admin: document.getElementById('admin-screen'),
         profile: document.getElementById('profile-screen'),
-    },
+    }
+});
 
-    productGrid: document.getElementById('product-grid'),
-    productDetailContent: document.getElementById('product-detail-screen'),
+// Helper de Modal Robusto
+function openModal(modalId, panelId = null) {
+    const modal = document.getElementById(modalId);
+    const panel = panelId ? document.getElementById(panelId) : null;
+    if (!modal) return;
 
-    orderHistoryContainer: document.getElementById('order-history-container'),
-    noOrdersMessage: document.getElementById('no-orders-message'),
-
-    profilePicLarge: document.getElementById('profile-pic-large'),
-    profileNameDisplay: document.getElementById('profile-name-display'),
-    profileEditForm: document.getElementById('profile-edit-form'),
-    profileFullNameInput: document.getElementById('profile-full-name'),
-    profilePhoneNumberInput: document.getElementById('profile-phone-number'),
-    saveProfileButton: document.getElementById('save-profile-button'),
-    logoutProfileButton: document.getElementById('logout-profile-button'),
-    savedAddressesContainer: document.getElementById('saved-addresses-container'),
-    addAddressButton: document.getElementById('add-address-button'),
-
-    cartModal: document.getElementById('cart-modal'),
-    cartPanel: document.getElementById('cart-panel'),
-    checkoutButton: document.getElementById('checkout-button'),
-    deliveryAddressInput: document.getElementById('delivery-address-input'),
-    closeCartButton: document.getElementById('close-cart-button'),
-    cartItemsContainer: document.getElementById('cart-items'),
-    cartTotal: document.getElementById('cart-total'),
-
-    orderConfirmModal: document.getElementById('order-confirm-modal'),
-    cancelOrderButton: document.getElementById('cancel-order-button'),
-    sendOrderWhatsappButton: document.getElementById('send-order-whatsapp-button'),
-
-    adminLoginModal: document.getElementById('admin-login-modal'),
-    adminLoginForm: document.getElementById('admin-login-form'),
-    closeAdminModalButton: document.getElementById('close-admin-modal-button'),
-
-    // referências que serão atualizadas quando renderAdminScreen montar o DOM:
-    adminPanelTitle: null,
-    productFormTitle: null,
-    productForm: null,
-    productIdInput: null,
-    productNameInput: null,
-    productPriceInput: null,
-    productCategoryInput: null,
-    productDescriptionInput: null,
-    productImageInput: null,
-    productFeatured: null,
-    submitProductButton: null,
-    cancelEditButton: null,
-    adminProductList: null,
-    noProductsMessage: null,
-};
-
-// ====================================================================
-// Verificação de Estrutura do DOM
-// ====================================================================
-function verifyDOMStructure() {
-    const requiredElements = [
-        'home-screen',
-        'products-screen',
-        'product-detail-screen',
-        'settings-screen',
-        'admin-screen',
-        'profile-screen',
-        'featured-products-container',
-        'no-featured-message',
-    ];
-
-    const missingElements = [];
-
-    requiredElements.forEach(elementId => {
-        if (!document.getElementById(elementId)) {
-            missingElements.push(elementId);
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0');
+        if (panel) {
+            panel.classList.remove('translate-x-full', 'scale-95');
         }
     });
-
-    if (missingElements.length > 0) {
-        console.error('⚠️ ELEMENTOS FALTANDO NO HTML:', missingElements);
-        return false;
-    }
-
-    console.log('✅ Estrutura do DOM verificada com sucesso!');
-    return true;
 }
 
-const LANG_ALIASES = {
-  'pt-br': 'pt',
-  'pt-pt': 'pt',
-  'pt': 'pt',
-  'en-us': 'en',
-  'en': 'en'
-};
+function closeModal(modalId, panelId = null) {
+    const modal = document.getElementById(modalId);
+    const panel = panelId ? document.getElementById(panelId) : null;
+    if (!modal) return;
 
-function setLanguage(lang) {
-    lang = (lang || '').toString().toLowerCase();
-    lang = LANG_ALIASES[lang] || lang;
-
-    state.currentLanguage = lang;
-    localStorage.setItem('appLang', lang);
-
-    document.querySelectorAll('[data-lang]').forEach(element => {
-        const key = element.getAttribute('data-lang');
-        if (translations[lang] && translations[lang][key]) {
-            if (element.tagName === 'INPUT' && element.hasAttribute('placeholder')) {
-                element.placeholder = translations[lang][key];
-            } else {
-                element.textContent = translations[lang][key];
-            }
-        }
-    });
-
-    // garantir título
-    if (translations[lang] && translations[lang]['app-title']) {
-        document.title = translations[lang]['app-title'];
+    modal.classList.add('opacity-0');
+    if (panel) {
+        panel.classList.add('translate-x-full', 'scale-95');
     }
-
-    // sincroniza select (aceita pt-br ou pt)
-    const langSelect = document.getElementById('lang-select') || document.getElementById('language-select');
-    if (langSelect) {
-        const opt = [...langSelect.options].find(o => o.value.toLowerCase().startsWith(lang));
-        if (opt) langSelect.value = opt.value;
-        else langSelect.value = lang;
-    }
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
 }
 
-// ====================================================================
-// Traduções e Utilitários
-// ====================================================================
-const translations = {
-    pt: {
-        'app-title': 'Nó&Laço - Loja Online',
-        'login-title': 'Cadastre-se para Comprar!',
-        'full-name-label': 'Nome Completo',
-        'phone-number-label': 'Número de Telefone',
-        'login-button': 'Entrar/Registrar',
-        'loading': 'Processando...',
-        'loading-products': 'Carregando produtos...',
-        'upload-photo': 'Carregar uma foto',
-        'search-placeholder': 'Buscar produtos...',
-        'your-cart-title': 'Seu Carrinho',
-        'total-label': 'Total:',
-        'checkout-button': 'Finalizar Compra',
-        'confirm-order-title': 'Confirmar Pedido',
-        'confirm-order-message': 'Seu pedido será enviado via WhatsApp para a finalização e confirmação dos detalhes. Continuar?',
-        'cancel-button': 'Cancelar',
-        'whatsapp-send-button': 'Enviar por WhatsApp',
-        'admin-access-title': 'Acesso de Administrador',
-        'admin-code-label': 'Código Secreto',
-        'app-brand': 'Nó&Laço',
-        'home-welcome': 'Bem-vindo à Nó&Laço!',
-        'home-subtitle': 'A sua loja online de acessórios.',
-        'view-products-btn': 'Ver Todos os Produtos',
-        'add-to-cart-btn': 'Adicionar ao Carrinho',
-        'product-details-title': 'Detalhes do Produto',
-        'admin-panel-title': 'Painel de Administração',
-        'settings-title': 'Configurações',
-        'theme-label': 'Tema Escuro',
-        'language-label': 'Idioma',
-        'logout-button-settings': 'Sair',
-        'add-new-product-title': 'Adicionar Novo Produto',
-        'edit-product-title': 'Editar Produto',
-        'add-product-button': 'Adicionar Produto',
-        'save-changes-button': 'Salvar Alterações',
-        'confirm-delete-product': 'Tem certeza que deseja excluir este produto?',
-        'profile-title': 'Meu Perfil',
-        'save-profile-button': 'Salvar Alterações',
-        'addresses-title': 'Meus Endereços',
-        'no-addresses-msg': 'Nenhum endereço salvo.',
-        'logout-button-profile': 'Sair da Conta',
-        'address-label': 'Confirme sua localização para a entrega',
-    },
-    en: {
-        'app-title': 'Nó&Laço - Online Store',
-        'login-title': 'Sign Up to Shop!',
-        'full-name-label': 'Full Name',
-        'phone-number-label': 'Phone Number',
-        'login-button': 'Log In/Register',
-        'loading': 'Processing...',
-        'loading-products': 'Loading products...',
-        'upload-photo': 'Upload a photo',
-        'search-placeholder': 'Search products...',
-        'your-cart-title': 'Your Cart',
-        'total-label': 'Total:',
-        'checkout-button': 'Checkout',
-        'confirm-order-title': 'Confirm Order',
-        'confirm-order-message': 'Your order will be sent via WhatsApp for finalization. Continue?',
-        'cancel-button': 'Cancel',
-        'whatsapp-send-button': 'Send via WhatsApp',
-        'admin-access-title': 'Admin Access',
-        'admin-code-label': 'Secret Code',
-        'app-brand': 'Nó&Laço',
-        'home-welcome': 'Welcome to Nó&Laço!',
-        'home-subtitle': 'Your online accessories store.',
-        'view-products-btn': 'View All Products',
-        'add-to-cart-btn': 'Add to Cart',
-        'product-details-title': 'Product Details',
-        'admin-panel-title': 'Admin Panel',
-        'settings-title': 'Settings',
-        'theme-label': 'Dark Mode',
-        'language-label': 'Language',
-        'logout-button-settings': 'Logout',
-        'add-new-product-title': 'Add New Product',
-        'edit-product-title': 'Edit Product',
-        'add-product-button': 'Add Product',
-        'save-changes-button': 'Save Changes',
-        'confirm-delete-product': 'Are you sure you want to delete this product?',
-        'profile-title': 'My Profile',
-        'save-profile-button': 'Save Changes',
-        'addresses-title': 'My Addresses',
-        'no-addresses-msg': 'No saved addresses.',
-        'logout-button-profile': 'Logout',
-        'address-label': 'Confirm your delivery location',
-    }
-};
+function formatMoney(amount) {
+    const num = parseFloat(amount);
+    if (isNaN(num)) return 'MZN 0.00';
+    return new Intl.NumberFormat('pt-MZ', {
+        style: 'currency',
+        currency: 'MZN'
+    }).format(num);
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
 function toggleLoading(show, messageKey = 'loading') {
+    const UI = getUI();
     if (!UI.loadingModal || !UI.loadingMessage) return;
 
     if (show) {
-        UI.loadingMessage.textContent = translations[state.currentLanguage][messageKey] || messageKey;
+        UI.loadingMessage.textContent = translations[state.currentLanguage]?.[messageKey] || messageKey;
         UI.loadingModal.classList.remove('hidden', 'opacity-0');
-        setTimeout(() => UI.loadingModal.classList.remove('opacity-0'), 10);
     } else {
         UI.loadingModal.classList.add('opacity-0');
         setTimeout(() => UI.loadingModal.classList.add('hidden'), 300);
@@ -299,24 +148,127 @@ function toggleLoading(show, messageKey = 'loading') {
 }
 
 function showNotification(message, type = 'info') {
-    if (!UI.notificationMessage) return;
+    const el = document.getElementById('notification-message');
+    if (!el) return;
 
-    UI.notificationMessage.textContent = message;
-    UI.notificationMessage.classList.remove('bg-green-500', 'bg-red-500', 'bg-blue-500');
-
-    let bgColor = 'bg-blue-500';
-    if (type === 'success') bgColor = 'bg-green-500';
-    if (type === 'error') bgColor = 'bg-red-500';
-
-    UI.notificationMessage.classList.add(bgColor);
-    UI.notificationMessage.classList.remove('hidden', 'translate-x-full', 'opacity-0');
-
-    setTimeout(() => UI.notificationMessage.classList.remove('translate-x-full', 'opacity-0'), 10);
+    el.textContent = message;
+    el.className = `fixed bottom-6 right-6 p-4 text-white rounded-xl shadow-lg transition-all duration-300 transform z-[110]`;
+    
+    let colorClass = 'bg-blue-500';
+    if (type === 'success') colorClass = 'bg-green-500';
+    if (type === 'error') colorClass = 'bg-red-500';
+    
+    el.classList.add(colorClass);
+    el.classList.remove('hidden', 'translate-x-full', 'opacity-0');
 
     setTimeout(() => {
-        UI.notificationMessage.classList.add('translate-x-full', 'opacity-0');
-        setTimeout(() => UI.notificationMessage.classList.add('hidden'), 300);
+        el.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => el.classList.add('hidden'), 300);
     }, 4000);
+}
+
+// ====================================================================
+// TRADUÇÕES
+// ====================================================================
+const translations = {
+    pt: {
+        'app-title': 'Nó&Laço - Loja Online',
+        'login-title': 'Cadastre-se para Comprar!',
+        'profile-picture-label': 'Foto de Perfil',
+        'upload-photo': 'Carregar foto',
+        'full-name-label': 'Nome Completo',
+        'phone-number-label': 'Número de Telefone',
+        'login-button': 'Entrar/Registrar',
+        'loading': 'Processando...',
+        'search-placeholder': 'Buscar produtos...',
+        'your-cart-title': 'Seu Carrinho',
+        'total-label': 'Total:',
+        'checkout-button': 'Finalizar Compra',
+        'admin-access-title': 'Acesso de Administrador',
+        'admin-code-label': 'Código Secreto',
+        'add-new-product-title': 'Adicionar Novo Produto',
+        'edit-product-title': 'Editar Produto',
+        'add-product-button': 'Adicionar Produto',
+        'save-changes-button': 'Salvar Alterações',
+        'profile-title': 'Meu Perfil',
+        'save-profile-button': 'Salvar Alterações',
+        'addresses-title': 'Meus Endereços',
+        'logout-button-settings': 'Sair',
+        'theme-label': 'Tema Escuro',
+        'language-label': 'Idioma',
+        'view-all-products': 'Ver Todos os Produtos',
+        'featured-title': '✨ Destaques da Semana ✨',
+        'all-products-title': 'Todos os Produtos',
+        'add-to-cart-btn': 'Adicionar ao Carrinho',
+        'address-label': 'Confirme sua localização para a entrega',
+        'confirm-order-title': 'Confirmar Pedido',
+        'confirm-order-message': 'Seu pedido será enviado via WhatsApp para a finalização e confirmação dos detalhes. Continuar?',
+        'cancel-button': 'Cancelar',
+        'whatsapp-send-button': 'Enviar por WhatsApp',
+        'settings-title': 'Configurações',
+        'favorites-title': 'Meus Favoritos',
+        'all-category': 'Todos',
+        'orders-history-title': 'Meus Pedidos',
+        'no-orders-message': 'Você ainda não fez nenhum pedido.',
+        'admin-products-tab': 'Produtos',
+        'admin-orders-tab': 'Pedidos'
+    },
+    en: {
+        'app-title': 'Nó&Laço - Online Store',
+        'login-title': 'Sign Up to Shop!',
+        'profile-picture-label': 'Profile Picture',
+        'upload-photo': 'Upload photo',
+        'full-name-label': 'Full Name',
+        'phone-number-label': 'Phone Number',
+        'login-button': 'Log In/Register',
+        'loading': 'Processing...',
+        'search-placeholder': 'Search products...',
+        'your-cart-title': 'Your Cart',
+        'total-label': 'Total:',
+        'checkout-button': 'Checkout',
+        'admin-access-title': 'Admin Access',
+        'admin-code-label': 'Secret Code',
+        'add-new-product-title': 'Add New Product',
+        'edit-product-title': 'Edit Product',
+        'add-product-button': 'Add Product',
+        'save-changes-button': 'Save Changes',
+        'profile-title': 'My Profile',
+        'save-profile-button': 'Save Changes',
+        'addresses-title': 'My Addresses',
+        'logout-button-settings': 'Logout',
+        'theme-label': 'Dark Mode',
+        'language-label': 'Language',
+        'view-all-products': 'View All Products',
+        'featured-title': '✨ Weekly Highlights ✨',
+        'all-products-title': 'All Products',
+        'add-to-cart-btn': 'Add to Cart',
+        'address-label': 'Confirm your delivery location',
+        'confirm-order-title': 'Confirm Order',
+        'confirm-order-message': 'Your order will be sent via WhatsApp for finalization. Continue?',
+        'cancel-button': 'Cancel',
+        'whatsapp-send-button': 'Send via WhatsApp',
+        'settings-title': 'Settings',
+        'favorites-title': 'My Favorites',
+        'all-category': 'All',
+        'orders-history-title': 'Order History',
+        'no-orders-message': 'You have not placed any orders yet.',
+        'admin-products-tab': 'Products',
+        'admin-orders-tab': 'Orders'
+    }
+};
+
+function setLanguage(lang) {
+    state.currentLanguage = lang || 'pt';
+    localStorage.setItem('appLang', state.currentLanguage);
+    
+    document.querySelectorAll('[data-lang]').forEach(el => {
+        const key = el.getAttribute('data-lang');
+        const text = translations[state.currentLanguage][key];
+        if (text) {
+            if (el.tagName === 'INPUT') el.placeholder = text;
+            else el.textContent = text;
+        }
+    });
 }
 
 function applyTheme(isDark) {
@@ -329,1860 +281,1072 @@ function applyTheme(isDark) {
     }
 }
 
-function initializeTheme() {
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
-    applyTheme(isDark);
-}
-
 // ====================================================================
-// Navegação
+// NAVEGAÇÃO & HISTORY API (BOTÃO VOLTAR)
 // ====================================================================
-function navigateToScreen(screenId, productId = null, isGoingBack = false) {
+function navigateToScreen(screenId, productId = null, isPopState = false) {
+    const UI = getUI();
+    if (!UI.screens[screenId]) return;
 
-    // Verificar existência da tela
-    if (!screenId || !UI.screens[screenId]) {
-        console.error(`Erro: Tela "${screenId}" não encontrada. Redirecionando para home.`);
-        screenId = 'home';
-    }
-
-    const currentScreen = state.navigationHistory[state.navigationHistory.length - 1];
-
-    // Salvar posição da lista de produtos
-    if (currentScreen === 'products') {
+    if (state.navigationHistory[state.navigationHistory.length - 1] === 'products') {
         state.lastScrollPosition = window.scrollY;
     }
 
-    // Esconder todas as telas
-    Object.values(UI.screens).forEach(s => s?.classList.add('hidden'));
-
-    // Registrar histórico
-    if (!isGoingBack) {
-        const lastScreen = state.navigationHistory[state.navigationHistory.length - 1];
-        if (lastScreen !== screenId) {
-            state.navigationHistory.push(screenId);
-        }
+    if (state.carouselInterval && screenId !== 'home') {
+        clearInterval(state.carouselInterval);
+        state.carouselInterval = null;
     }
 
-    // Exibir botão voltar
-    if (state.navigationHistory.length > 1) {
-        UI.backButton?.classList.remove('hidden');
-    } else {
-        UI.backButton?.classList.add('hidden');
+    Object.values(UI.screens).forEach(s => s.classList.add('hidden'));
+
+    // Atualiza histórico interno
+    if (state.navigationHistory[state.navigationHistory.length - 1] !== screenId) {
+        state.navigationHistory.push(screenId);
+    }
+    
+    // Atualiza History API do navegador (para botão voltar físico)
+    if (!isPopState) {
+        const urlHash = `#${screenId}${productId ? '/' + productId : ''}`;
+        window.history.pushState({ screen: screenId, productId }, "", urlHash);
     }
 
-    // Mostrar a tela escolhida
-    const screen = UI.screens[screenId];
-    if (!screen) {
-        console.error(`Erro crítico: Elemento da tela "${screenId}" não existe no DOM.`);
-        return;
-    }
-    screen.classList.remove('hidden');
+    UI.backButton?.classList.toggle('hidden', state.navigationHistory.length <= 1);
+    UI.screens[screenId].classList.remove('hidden');
 
-    // Renderizações específicas
-    try {
-        switch (screenId) {
-            case 'home':
-                renderHomeScreen();
-                break;
-
-            case 'products':
-                UI.searchInput.value = '';
-                renderProducts(state.products);
-
-                if (isGoingBack && state.lastScrollPosition) {
-                    requestAnimationFrame(() =>
-                        window.scrollTo({ top: state.lastScrollPosition, behavior: "instant" })
-                    );
-                } else {
-                    window.scrollTo(0, 0);
-                }
-                break;
-
-            case 'product-detail':
-                if (productId) renderProductDetail(productId);
+    switch (screenId) {
+        case 'home': 
+            renderHomeScreen(); 
+            window.scrollTo(0, 0);
+            break;
+        case 'products':
+            if (state.navigationHistory.length <= 2) {
+                state.currentCategory = 'all';
+                state.searchTerm = '';
+                if(UI.searchInput) UI.searchInput.value = '';
+            }
+            if(UI.searchInput) UI.searchInput.value = state.searchTerm;
+            renderCategories();
+            renderProducts();
+            if (isPopState && state.lastScrollPosition > 0) {
+                requestAnimationFrame(() => {
+                    window.scrollTo({ top: state.lastScrollPosition, behavior: "instant" });
+                });
+            } else if (!isPopState) {
                 window.scrollTo(0, 0);
-                break;
-
-            case 'settings':
-                renderSettingsScreen();
-                break;
-
-            case 'admin':
-                state.isAdmin ? renderAdminScreen() : navigateToScreen('home');
-                break;
-
-            case 'profile':
-                renderProfileScreen();
-                break;
-        }
-
-    } catch (error) {
-        console.error(`Erro ao renderizar tela "${screenId}":`, error);
-        showNotification('Erro ao carregar a tela. Tente novamente.', 'error');
+            }
+            break;
+        case 'product-detail':
+            if (productId) renderProductDetail(productId);
+            window.scrollTo(0, 0);
+            break;
+        case 'settings': renderSettingsScreen(); break;
+        case 'admin':
+            if (state.isAdmin) renderAdminScreen();
+            else navigateToScreen('home', null, true); 
+            break;
+        case 'profile': renderProfileScreen(); break;
     }
+    setLanguage(state.currentLanguage);
 }
 
 function goBack() {
-    if (state.navigationHistory.length <= 1) {
-        navigateToScreen('home', null, true);
-        return;
+    // Usa o botão nativo do navegador para manter consistência
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        navigateToScreen('home');
     }
-    state.navigationHistory.pop();
-    const previousScreen = state.navigationHistory[state.navigationHistory.length - 1];
-    navigateToScreen(previousScreen || 'home', null, true);
 }
 
 // ====================================================================
-// Upload / imagens
+// MAPS (LEAFLET)
 // ====================================================================
-async function uploadImage(fileOrDataUrl) {
-    const formData = new FormData();
-    let fileToUpload = fileOrDataUrl;
+function initMap() {
+    if (state.map) return;
 
-    if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
-        fileToUpload = dataURLtoBlob(fileOrDataUrl);
-    }
+    // Coordenadas iniciais: Maputo, Moçambique
+    const initialLat = -25.9692;
+    const initialLng = 32.5732;
 
-    if (!(fileToUpload instanceof Blob || fileToUpload instanceof File)) {
-        console.error("Erro: Tipo de arquivo inválido para upload.");
-        return null;
-    }
+    state.map = L.map('map-container').setView([initialLat, initialLng], 13);
 
-    formData.append('file', fileToUpload);
-    formData.append('upload_preset', CONFIG.CLOUDINARY_UPLOAD_PRESET);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(state.map);
+
+    const icon = L.icon({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    state.mapMarker = L.marker([initialLat, initialLng], { draggable: true, icon: icon }).addTo(state.map);
+    
+    // Inicializa coordenadas padrão para que o botão 'Confirmar' funcione sem interação inicial
+    reverseGeocode(initialLat, initialLng);
+
+    state.mapMarker.on('dragend', async function(e) {
+        const { lat, lng } = e.target.getLatLng();
+        await reverseGeocode(lat, lng);
+    });
+
+    state.map.on('click', async function(e) {
+        const { lat, lng } = e.latlng;
+        state.mapMarker.setLatLng([lat, lng]);
+        await reverseGeocode(lat, lng);
+    });
+}
+
+async function searchLocation() {
+    const query = document.getElementById('map-search-input').value;
+    if (!query) return;
+
+    const btn = document.getElementById('map-search-btn');
+    const originalText = btn.textContent;
+    btn.textContent = "...";
+    btn.disabled = true;
 
     try {
-        const resp = await fetch(`https://api.cloudinary.com/v1_1/${CONFIG.CLOUDINARY_CLOUD_NAME}/image/upload`, {
-            method: 'POST',
-            body: formData
-        });
+        const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Mozambique')}`);
         const data = await resp.json();
-        if (resp.ok) return data.secure_url;
-        else throw new Error(data.error ? data.error.message : 'Upload failed');
-    } catch (error) {
-        console.error("Erro ao fazer upload da imagem:", error);
-        return null;
+
+        if (data && data.length > 0) {
+            const { lat, lon } = data[0];
+            const newLatLng = [parseFloat(lat), parseFloat(lon)];
+            state.map.setView(newLatLng, 15);
+            state.mapMarker.setLatLng(newLatLng);
+            await reverseGeocode(lat, lon);
+        } else {
+            alert('Local não encontrado. Tente ser mais específico.');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Erro na busca.');
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
     }
 }
 
-function dataURLtoBlob(dataurl) {
-    const arr = dataurl.split(',');
-    const mime = arr[0].match(/:(.*?);/)[1];
-    const bstr = atob(arr[arr.length - 1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-        u8arr[n] = bstr.charCodeAt(n);
+async function reverseGeocode(lat, lng) {
+    // Garante que são números e salva no estado para o link do WhatsApp
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    state.deliveryCoordinates = { lat: latNum, lng: lngNum };
+
+    const display = document.getElementById('map-selected-address');
+    display.textContent = "Buscando endereço...";
+    
+    try {
+        const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+        const data = await resp.json();
+        const address = data.display_name || `Lat: ${latNum.toFixed(5)}, Lng: ${lngNum.toFixed(5)}`;
+        state.selectedLocation = address;
+        display.textContent = address;
+    } catch (e) {
+        state.selectedLocation = `Lat: ${latNum.toFixed(5)}, Lng: ${lngNum.toFixed(5)}`;
+        display.textContent = state.selectedLocation;
     }
-    return new Blob([u8arr], { type: mime });
 }
 
-// Redimensiona/compacta e retorna DataURL (string). Já testado com canvas-toDataURL.
+// ====================================================================
+// LOGIN & USER
+// ====================================================================
+async function uploadImage(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CONFIG.CLOUDINARY_UPLOAD_PRESET);
+    try {
+        const resp = await fetch(`https://api.cloudinary.com/v1_1/${CONFIG.CLOUDINARY_CLOUD_NAME}/image/upload`, { method: 'POST', body: formData });
+        const data = await resp.json();
+        return resp.ok ? data.secure_url : null;
+    } catch (e) { return null; }
+}
+
 function processImage(file, maxWidth = 800, quality = 0.85) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
-
-        reader.onload = (event) => {
+        reader.onload = (e) => {
             const img = new Image();
-            img.src = event.target.result;
-
+            img.src = e.target.result;
             img.onload = () => {
-                let width = img.width;
-                let height = img.height;
-
+                let { width, height } = img;
                 if (width > maxWidth) {
                     height = Math.round(height * (maxWidth / width));
                     width = maxWidth;
                 }
-
                 const canvas = document.createElement('canvas');
                 canvas.width = width;
                 canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-
-                try {
-                    const dataUrl = canvas.toDataURL('image/jpeg', quality);
-                    resolve(dataUrl);
-                } catch (err) {
-                    reject('Erro ao gerar imagem processada: ' + err);
-                }
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                canvas.toBlob(blob => resolve(blob), 'image/jpeg', quality);
             };
-
-            img.onerror = () => reject('Erro ao carregar imagem para redimensionar.');
+            img.onerror = reject;
         };
-
-        reader.onerror = () => reject('Erro ao ler o ficheiro.');
+        reader.onerror = reject;
     });
 }
 
-// ====================================================================
-// Login / Registro / Perfil
-// ====================================================================
-function handleProfilePictureChange(event) {
-    const file = event.target.files && event.target.files[0];
-    if (file) {
-        state.profilePictureFile = file;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            if (UI.profilePreview) UI.profilePreview.src = e.target.result;
-            UI.defaultProfileIcon?.classList.add('hidden');
-            UI.profilePreviewContainer?.classList.remove('hidden');
-            document.getElementById('profile-picture-upload-area')?.classList.remove('border-dashed', 'border-main');
-            document.getElementById('profile-picture-upload-area')?.classList.add('border-solid', 'border-brand-primary');
-        };
-        reader.readAsDataURL(file);
+async function handleRegistration(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
     }
-}
-
-async function handleRegistration(event) {
-    event.preventDefault();
-    toggleLoading(true, 'loading');
-
-    const { doc, getDoc, setDoc } = window.firebase;
-    const db = window.db;
-
-    const fullName = document.getElementById('full-name').value.trim();
-    const phoneNumberRaw = document.getElementById('phone-number').value.trim();
-    const phoneNumber = phoneNumberRaw.replace(/\D/g, '');
-
-    const REQUIRED_PHONE_LENGTH = 12;
-
-    if (!fullName || !phoneNumber) {
-        showNotification('Por favor, preencha todos os campos.', 'error');
-        toggleLoading(false);
-        return;
-    }
-
-    const operatorPrefix = phoneNumber.substring(3, 5);
-
-    if (phoneNumber.substring(0, 3) !== '258' || phoneNumber.length !== REQUIRED_PHONE_LENGTH) {
-        showNotification(`Por favor, insira um número válido de ${REQUIRED_PHONE_LENGTH} dígitos, começando com 258.`, 'error');
-        toggleLoading(false);
-        return;
-    }
-
-    if (!CONFIG.VALID_MZ_PREFIXES.includes(operatorPrefix)) {
-        showNotification(`O prefixo ${operatorPrefix} não é reconhecido. Use 82, 83, 84, 85, 86 ou 87.`, 'error');
-        toggleLoading(false);
-        return;
-    }
-
+    
+    toggleLoading(true);
+    
     try {
-        let profilePicUrl = 'https://placehold.co/100x100?text=User';
+        const fullNameInput = document.getElementById('full-name');
+        const phoneInput = document.getElementById('phone-number');
+        
+        const fullName = fullNameInput.value.trim();
+        const phoneRaw = phoneInput.value.replace(/\D/g, '');
 
+        if (!fullName || phoneRaw.length !== 12 || phoneRaw.substring(0, 3) !== '258') {
+            showNotification('Número inválido. Use formato 258841234567', 'error');
+            toggleLoading(false);
+            return false;
+        }
+
+        let picUrl = 'https://placehold.co/100x100?text=User';
         if (state.profilePictureFile) {
-            showNotification('Fazendo upload da foto...', 'info');
-            // Process image for profile pic (smaller)
-            const processed = await processImage(state.profilePictureFile, 300, 0.8);
-            profilePicUrl = await uploadImage(processed) || profilePicUrl;
+            const blob = await processImage(state.profilePictureFile, 300, 0.8);
+            const uploaded = await uploadImage(blob);
+            if (uploaded) picUrl = uploaded;
         }
 
-        const userRef = doc(db, 'users', phoneNumber);
+        const { doc, getDoc, setDoc } = window.firebase;
+        const userRef = doc(window.db, 'users', phoneRaw);
         const docSnap = await getDoc(userRef);
-
-        const isAdministrator = CONFIG.ADMIN_WHATSAPP_NUMBERS.includes(phoneNumber);
-
-        let userData;
-        if (docSnap.exists()) {
-            userData = docSnap.data();
-            showNotification(`Bem-vindo(a) de volta, ${userData.fullName}!`, 'success');
-            userData.role = isAdministrator ? 'admin' : (userData.role || 'user');
-        } else {
-            const role = isAdministrator ? 'admin' : 'user';
-
-            userData = {
-                id: phoneNumber,
-                fullName,
-                phoneNumber,
-                profilePicture: profilePicUrl,
-                role: role,
-                createdAt: new Date().toISOString(),
-            };
-            await setDoc(userRef, userData);
-            showNotification(`Cadastro realizado. Bem-vindo(a), ${userData.fullName}!`, 'success');
-        }
-
+        const isAdmin = CONFIG.ADMIN_WHATSAPP_NUMBERS.includes(phoneRaw);
+        
+        let existingData = docSnap.exists() ? docSnap.data() : {};
+        
+        let userData = {
+            ...existingData,
+            id: phoneRaw, 
+            fullName, 
+            phoneNumber: phoneRaw, 
+            profilePicture: picUrl,
+            role: isAdmin ? 'admin' : (existingData.role || 'user'), 
+            createdAt: existingData.createdAt || new Date().toISOString()
+        };
+        
+        await setDoc(userRef, userData);
+        
         state.user = userData;
         localStorage.setItem('currentUser', JSON.stringify(userData));
-
+        
         initializeAppUI();
-    } catch (error) {
-        console.error("Erro no registro/login: ", error);
-        showNotification('Ocorreu um erro. Tente novamente.', 'error');
-    } finally {
-        toggleLoading(false);
+        showNotification(`Bem-vindo, ${userData.fullName}!`, 'success');
+        
+    } catch (err) { 
+        console.error(err); 
+        showNotification('Erro no registro. Verifique a conexão.', 'error'); 
+    } finally { 
+        toggleLoading(false); 
     }
+    return false;
 }
 
 function handleLogout() {
     localStorage.removeItem('currentUser');
-    // manter outros dados locais úteis? dependendo do UX, podemos ou não limpar tudo.
-    state.user = null;
-    state.cart = [];
     localStorage.setItem('cart', JSON.stringify([]));
     window.location.reload();
 }
 
-function handleProfileEdit(event) {
-    event.preventDefault();
-
-    if (!state.user) return;
-    toggleLoading(true, 'loading');
-
-    const newFullName = UI.profileFullNameInput?.value.trim() || state.user.fullName;
-    const newPhoneNumber = UI.profilePhoneNumberInput?.value.trim() || state.user.phoneNumber;
-
-    state.user.fullName = newFullName;
-    state.user.phoneNumber = newPhoneNumber;
-    localStorage.setItem('currentUser', JSON.stringify(state.user));
-
-    if (UI.userProfileName) {
-        UI.userProfileName.textContent = newFullName.split(' ')[0];
-    }
-
-    renderProfileScreen();
-
-    showNotification('Perfil atualizado com sucesso!', 'success');
-    toggleLoading(false);
-}
-
 // ====================================================================
-// Produtos / Renderização
+// CORE: PRODUCTS & LISTS
 // ====================================================================
 function listenToProducts() {
     const { collection, query, orderBy, onSnapshot } = window.firebase;
-    const db = window.db;
-
-    const q = query(
-        collection(db, "products"),
-        orderBy("createdAt", "desc")
-    );
+    const q = query(collection(window.db, "products"), orderBy("createdAt", "desc"));
 
     onSnapshot(q, (snapshot) => {
-        state.products = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                visible: data.visible ?? true
-            };
-        });
-
-        // 🔥 Atualiza telas automaticamente
-        renderHomeScreen();
-        renderProducts(state.products);
-        if (state.isAdmin) renderAdminScreen();
+        state.products = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            visible: doc.data().visible ?? true
+        }));
+        
+        const currentScreen = state.navigationHistory[state.navigationHistory.length - 1];
+        if (currentScreen === 'products') {
+            const currentScroll = window.scrollY;
+            renderCategories();
+            renderProducts();
+            window.scrollTo({ top: currentScroll, behavior: 'instant' });
+        } else if (currentScreen === 'home') {
+            renderHomeScreen();
+        } else if (currentScreen === 'admin') {
+            renderAdminScreen();
+        }
     });
 }
 
 function renderProductCard(product) {
-    const imgUrl = product.imageUrl || 'https://placehold.co/400x300?text=Produto';
-    const truncatedName = (product.name || '').replace(/'/g, "\\'");
-    const price = (typeof product.price === 'number') ? product.price.toFixed(2) : product.price;
+    const safeName = escapeHtml(product.name);
+    const safeCat = escapeHtml(product.category);
+    const imgUrl = product.imageUrl || 'https://placehold.co/400x300';
+    const jsName = safeName.replace(/'/g, "\\'"); 
+    const btnText = translations[state.currentLanguage]['add-to-cart-btn'] || 'Adicionar ao Carrinho';
+    const isFav = state.favorites.includes(product.id);
+    const safePrice = product.price || 0;
+
     return `
-        <div class="bg-primary shadow-xl rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-            <img src="${imgUrl}" alt="${product.name}" class="w-full h-48 object-cover cursor-pointer" onclick="navigateToScreen('product-detail', '${product.id}')">
+        <div class="product-card bg-primary shadow-xl rounded-xl overflow-hidden group relative">
+            <button onclick="toggleFavorite(event, '${product.id}')" class="absolute top-2 right-2 z-10 p-2 rounded-full bg-white/80 hover:bg-white shadow-sm transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-colors ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+            </button>
+
+            <div class="overflow-hidden h-48">
+                <img src="${imgUrl}" loading="lazy" onerror="this.src='https://placehold.co/400x300?text=Sem+Imagem'" alt="${safeName}" class="w-full h-full object-cover cursor-pointer transition-transform duration-500 group-hover:scale-110" onclick="navigateToScreen('product-detail', '${product.id}')">
+            </div>
             <div class="p-4">
-                <h3 class="text-lg font-bold truncate">${product.name}</h3>
-                <p class="text-secondary text-sm mb-2">${product.category || ''}</p>
-                <p class="text-xl font-extrabold text-brand-primary mb-3">${CONFIG.CURRENCY_SYMBOL} ${price}</p>
+                <h3 class="text-lg font-bold truncate text-primary">${safeName}</h3>
+                <p class="text-secondary text-sm mb-2">${safeCat}</p>
+                <p class="text-xl font-extrabold text-brand-primary mb-3">${formatMoney(safePrice)}</p>
                 <button
-                    class="w-full py-2 px-4 bg-brand-primary text-white rounded-lg hover:bg-brand-hover transition-colors duration-300 text-sm font-semibold"
-                    onclick="addToCart('${product.id}', '${truncatedName}', ${product.price}, '${imgUrl}')"
+                    class="w-full py-2 px-4 bg-brand-primary text-white rounded-lg hover:bg-brand-hover text-sm font-semibold shadow-md active:scale-95 transition-transform"
+                    onclick="addToCart('${product.id}', '${jsName}', ${safePrice}, '${imgUrl}')"
                     data-lang="add-to-cart-btn">
-                    Adicionar ao Carrinho
+                    ${btnText}
                 </button>
             </div>
         </div>
     `;
 }
 
-function renderProducts(products) {
-    const productsScreen = UI.screens['products'];
-    if (!productsScreen) {
-        console.error("Erro: O elemento products-screen não foi encontrado.");
-        return;
+function renderProducts() {
+    const UI = getUI();
+    if (!UI.productGrid) return;
+    
+    let filtered = state.products.filter(p => {
+        const matchesVisibility = p.visible !== false;
+        const matchesCategory = state.currentCategory === 'all' || p.category === state.currentCategory;
+        return matchesVisibility && matchesCategory;
+    });
+
+    if (state.searchTerm) {
+        const term = state.searchTerm.toLowerCase();
+        filtered = filtered.filter(p => p.name.toLowerCase().includes(term));
     }
-
-    // 🔥 FILTRAR produtos ocultos
-    products = products.filter(p => p.visible !== false);
-
-    if (!document.getElementById('product-grid')) {
-        productsScreen.innerHTML = `<div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-4"></div>`;
-        UI.productGrid = document.getElementById('product-grid');
-    }
-
-    if (UI.productGrid) {
-        if (!products || products.length === 0) {
-            UI.productGrid.innerHTML = `<p class="text-center text-xl py-10 text-secondary">Nenhum produto encontrado.</p>`;
-        } else {
-            UI.productGrid.innerHTML = products.map(renderProductCard).join('');
-        }
+    
+    if (filtered.length === 0) {
+        UI.productGrid.innerHTML = `<p class="col-span-full text-center text-secondary py-10">Nenhum produto encontrado.</p>`;
+    } else {
+        UI.productGrid.innerHTML = filtered.map(renderProductCard).join('');
     }
     setLanguage(state.currentLanguage);
 }
+
+function renderCategories() {
+    const UI = getUI();
+    if (!UI.categoryFilters) return;
+    const allCategories = ['all', ...new Set(state.products.map(p => p.category).filter(Boolean))];
+    UI.categoryFilters.innerHTML = allCategories.map(cat => {
+        const isActive = state.currentCategory === cat;
+        const displayName = cat === 'all' ? (translations[state.currentLanguage]['all-category'] || 'Todos') : cat;
+        return `<button onclick="setCategory('${cat}')" class="px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${isActive ? 'bg-brand-primary text-white shadow-md' : 'bg-secondary text-secondary border border-main hover:border-brand-primary'}">${displayName}</button>`;
+    }).join('');
+}
+window.setCategory = (cat) => { state.currentCategory = cat; renderCategories(); renderProducts(); };
+function toggleFavorite(e, productId) { e.stopPropagation(); const idx = state.favorites.indexOf(productId); if (idx > -1) { state.favorites.splice(idx, 1); showNotification('Removido dos favoritos', 'info'); } else { state.favorites.push(productId); showNotification('Adicionado aos favoritos', 'success'); } localStorage.setItem('favorites', JSON.stringify(state.favorites)); const currentScreen = state.navigationHistory[state.navigationHistory.length - 1]; if (currentScreen === 'products') renderProducts(); else if (currentScreen === 'profile') renderProfileScreen(); else if (currentScreen === 'product-detail') renderProductDetail(productId); }
 
 function renderProductDetail(productId) {
-    state.lastScrollPosition = window.scrollY;
-
-    const product = state.products.find(p => p.id === productId);
-    if (!product) {
-        showNotification('Produto não encontrado.', 'error');
-        navigateToScreen('products');
-
-        setTimeout(() => {
-            window.scrollTo(0, state.lastScrollPosition || 0);
-        }, 10);
-
-        return;
-    }
-
-    const imgUrl = product.imageUrl || 'https://placehold.co/600x600?text=Produto';
-
-    UI.productDetailContent.innerHTML = `
-        <div class="max-w-4xl mx-auto bg-primary rounded-xl shadow-2xl overflow-hidden md:flex">
-            <div class="md:w-1/2 p-4">
-                <img src="${imgUrl}" alt="${product.name}" class="w-full h-96 object-cover rounded-lg shadow-lg">
-            </div>
-            <div class="md:w-1/2 p-6 space-y-4">
-                <h1 class="text-4xl font-extrabold text-brand-primary">${product.name}</h1>
-                <p class="text-secondary text-lg">${product.category}</p>
-                <p class="text-2xl font-black text-green-500">${CONFIG.CURRENCY_SYMBOL} ${product.price.toFixed(2)}</p>
-                <p class="text-primary leading-relaxed">${product.description || 'Descrição não disponível.'}</p>
-
-                <div class="pt-4">
-                    <button
-                        class="w-full py-3 px-6 bg-brand-primary text-white rounded-xl hover:bg-brand-hover transition-colors duration-300 text-lg font-semibold flex items-center justify-center space-x-2"
-                        onclick="addToCart('${product.id}', '${(product.name||'').replace(/'/g, "\\'")}', ${product.price}, '${imgUrl}')">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        <span data-lang="add-to-cart-btn">Adicionar ao Carrinho</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    setLanguage(state.currentLanguage);
+    const UI = getUI(); const product = state.products.find(p => p.id === productId); if (!product || !UI.productDetailContent) return;
+    const safeName = escapeHtml(product.name); const safeDesc = escapeHtml(product.description); const jsName = safeName.replace(/'/g, "\\'"); const btnText = translations[state.currentLanguage]['add-to-cart-btn'] || 'Adicionar ao Carrinho'; const isFav = state.favorites.includes(product.id);
+    const safePrice = product.price || 0;
+    
+    UI.productDetailContent.innerHTML = `<div class="max-w-4xl mx-auto bg-primary rounded-xl shadow-2xl overflow-hidden md:flex animate-fade-in relative"><button onclick="toggleFavorite(event, '${product.id}')" class="absolute top-4 right-4 z-10 p-3 rounded-full bg-white/80 hover:bg-white shadow-md"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 transition-colors ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg></button><div class="md:w-1/2 p-4"><img src="${product.imageUrl || 'https://placehold.co/600x600'}" onerror="this.src='https://placehold.co/600x600?text=Sem+Imagem'" alt="${safeName}" class="w-full h-96 object-cover rounded-lg shadow-lg"></div><div class="md:w-1/2 p-6 space-y-4"><h1 class="text-4xl font-extrabold text-brand-primary">${safeName}</h1><p class="text-secondary text-lg">${escapeHtml(product.category)}</p><p class="text-2xl font-black text-green-500">${formatMoney(safePrice)}</p><p class="text-primary leading-relaxed">${safeDesc || 'Sem descrição.'}</p><div class="pt-4"><button class="w-full py-3 px-6 bg-brand-primary text-white rounded-xl hover:bg-brand-hover text-lg font-semibold shadow-lg active:scale-95 transition-transform" onclick="addToCart('${product.id}', '${jsName}', ${safePrice}, '${product.imageUrl}')">${btnText}</button></div></div></div>`; setLanguage(state.currentLanguage);
 }
 
-// ====================================================================
-// Carrinho
-// ====================================================================
-function saveCart() {
-    localStorage.setItem('cart', JSON.stringify(state.cart));
-}
-
-function updateCartUI() {
-    if (!UI.cartItemCount || !UI.cartItemsContainer || !UI.cartTotal || !UI.checkoutButton) return;
-
-    UI.cartItemCount.textContent = state.cart.reduce((total, item) => total + item.quantity, 0);
-    UI.cartItemsContainer.innerHTML = '';
-
-    if (state.cart.length === 0) {
-        UI.cartItemsContainer.innerHTML = `<p class="text-center text-secondary py-10">O carrinho está vazio.</p>`;
-        UI.cartTotal.textContent = `${CONFIG.CURRENCY_SYMBOL} 0.00`;
-        UI.checkoutButton.disabled = true;
-        return;
-    }
-
-    let total = 0;
-    state.cart.forEach(item => {
-        total += item.price * item.quantity;
-        UI.cartItemsContainer.innerHTML += `
-            <div class="flex items-center justify-between p-3 bg-primary rounded-lg shadow-sm">
-                <img src="${item.imageUrl}" alt="${item.name}" class="w-12 h-12 object-cover rounded-md">
-                <div class="flex-grow mx-3 truncate">
-                    <p class="font-semibold truncate">${item.name}</p>
-                    <p class="text-sm text-secondary">${CONFIG.CURRENCY_SYMBOL} ${item.price.toFixed(2)} x ${item.quantity}</p>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <input type="number" min="1" value="${item.quantity}"
-                        onchange="updateCartItemQuantity('${item.id}', this.value)"
-                        class="w-12 text-center border rounded-md bg-secondary border-main text-primary">
-                    <button class="text-red-500 hover:text-red-700 p-1 rounded-full" onclick="removeFromCart('${item.id}')">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                </div>
-            </div>
-        `;
-    });
-
-    UI.cartTotal.textContent = `${CONFIG.CURRENCY_SYMBOL} ${total.toFixed(2)}`;
-    UI.checkoutButton.disabled = false;
-}
-
-function addToCart(id, name, price, imageUrl, quantity = 1) {
-    const existingItem = state.cart.find(item => item.id === id);
-    const qty = parseInt(quantity);
-
-    if (existingItem) {
-        existingItem.quantity += qty;
-    } else {
-        state.cart.push({ id, name, price, imageUrl, quantity: qty });
-    }
-
-    saveCart();
-    updateCartUI();
-    showNotification(`${name} adicionado ao carrinho!`, 'success');
-}
-
-function removeFromCart(id) {
-    state.cart = state.cart.filter(item => item.id !== id);
-    saveCart();
-    updateCartUI();
-    showNotification('Item removido do carrinho.', 'info');
-}
-
-function updateCartItemQuantity(id, quantity) {
-    const qty = parseInt(quantity);
-    if (qty <= 0 || isNaN(qty)) {
-        removeFromCart(id);
-        return;
-    }
-
-    const item = state.cart.find(i => i.id === id);
-    if (item) {
-        item.quantity = qty;
-        saveCart();
-        updateCartUI();
-    }
-}
-
-function openCartModal() {
-    if (!UI.cartModal || !UI.cartPanel) return;
-
-    updateCartUI();
-    UI.cartModal.classList.remove('hidden');
-    setTimeout(() => {
-        UI.cartModal.classList.add('opacity-100');
-        UI.cartPanel.classList.remove('translate-x-full');
-    }, 10);
-}
-
-function closeCartModal() {
-    if (!UI.cartModal || !UI.cartPanel) return;
-
-    UI.cartPanel.classList.add('translate-x-full');
-    UI.cartModal.classList.remove('opacity-100');
-    setTimeout(() => UI.cartModal.classList.add('hidden'), 300);
-}
-
-function prepareOrderMessage() {
-    const deliveryAddress = state.user.deliveryAddress || "Endereço não fornecido";
-    const encodedAddress = encodeURIComponent(deliveryAddress);
-    const mapUrl = `https://www.google.com/maps/search/${encodedAddress}`;
-
-    const total = state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-    const formattedItems = state.cart.map((item, index) => {
-        const subtotal = (item.price * item.quantity).toFixed(2);
-        return `
-${index + 1}) *${item.name}*
-- Quantidade: ${item.quantity}
-- Subtotal: ${CONFIG.CURRENCY_SYMBOL} ${subtotal}
-`;
-    }).join("");
-
-    const message = `
- *NOVO PEDIDO – Nó&Laço*
-
- *Cliente:* ${state.user.fullName}
- *Telefone:* ${state.user.phoneNumber}
- *Endereço:* ${deliveryAddress}
-
- *Mapa:* ${mapUrl}
-
-------------------------------
- *Itens do Pedido:*
-${formattedItems}
-------------------------------
-
- *Total:* *${CONFIG.CURRENCY_SYMBOL} ${total.toFixed(2)}*
-
- Obrigado!
-Por favor confirme o pagamento e entrega.
-    `;
-
-    return encodeURIComponent(message.trim());
-}
-
-function sendOrderToAdmins(message) {
-    CONFIG.ADMIN_WHATSAPP_NUMBERS.forEach(number => {
-        const whatsappUrl = `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
-        window.open(whatsappUrl, "_blank");
-    });
-}
-
-function sendOrderViaWhatsApp() {
-    const message = prepareOrderMessage();
-    const whatsappUrl = `https://wa.me/${CONFIG.ADMIN_WHATSAPP_NUMBER}?text=${message}`;
-    window.open(whatsappUrl, '_blank');
-
-    state.cart = [];
-    saveCart();
-    updateCartUI();
-    closeOrderConfirmModal();
-    closeCartModal();
-    showNotification('Pedido enviado com sucesso para o WhatsApp!', 'success');
-}
-
-function openOrderConfirmModal() {
-    if (!UI.orderConfirmModal || !UI.deliveryAddressInput) return;
-
-    if (state.cart.length === 0) {
-        showNotification('O carrinho está vazio!', 'error');
-        return;
-    }
-
-    const address = UI.deliveryAddressInput.value.trim();
-    if (!address) {
-        showNotification('Por favor, insira o endereço de entrega completo!', 'error');
-        UI.deliveryAddressInput.focus();
-        return;
-    }
-
-    state.user.deliveryAddress = address;
-
-    UI.orderConfirmModal.classList.remove('hidden', 'opacity-0');
-    setTimeout(() => UI.orderConfirmModal.classList.remove('opacity-0'), 10);
-}
-
-function closeOrderConfirmModal() {
-    if (!UI.orderConfirmModal) return;
-
-    UI.orderConfirmModal.classList.add('opacity-0');
-    setTimeout(() => UI.orderConfirmModal.classList.add('hidden'), 300);
-}
-
-// ====================================================================
-// Admin / CRUD Produtos (fixes e destaque)
-// ====================================================================
-
-function handleAdminLogin(event) {
-    event.preventDefault();
-    const code = document.getElementById('admin-code')?.value;
-
-    if (code === CONFIG.INSECURE_ADMIN_CODE) {
-        if (state.user) {
-            state.user.role = 'admin';
-            localStorage.setItem('currentUser', JSON.stringify(state.user));
-            updateAdminVisibility();
-            closeAdminModal();
-            showNotification('Acesso de Admin ativado!', 'success');
-            navigateToScreen('admin');
-        } else {
-            showNotification('Faça login primeiro para usar este código.', 'error');
-        }
-    } else {
-        showNotification('Código secreto incorreto.', 'error');
-    }
-
-    if (document.getElementById('admin-code')) {
-        document.getElementById('admin-code').value = '';
-    }
-}
-
-function closeAdminModal() {
-    if (!UI.adminLoginModal) return;
-    UI.adminLoginModal.classList.add('opacity-0');
-    setTimeout(() => UI.adminLoginModal.classList.add('hidden'), 300);
-}
-
-function updateAdminVisibility() {
-    if (!UI.adminButton) return;
-
-    if (state.isAdmin) {
-        UI.adminButton.classList.remove('hidden');
-    } else {
-        UI.adminButton.classList.add('hidden');
-    }
-}
-
-function resetProductForm() {
-    if (!UI.productForm) return;
-
-    UI.productForm.reset();
-    if (UI.productIdInput) UI.productIdInput.value = '';
-    if (UI.productFormTitle) {
-        UI.productFormTitle.textContent = translations[state.currentLanguage]['add-new-product-title'] || 'Adicionar Novo Produto';
-    }
-    if (UI.submitProductButton) {
-        UI.submitProductButton.textContent = translations[state.currentLanguage]['add-product-button'] || 'Adicionar Produto';
-        UI.submitProductButton.classList.remove('bg-blue-500', 'hover:bg-blue-600');
-        UI.submitProductButton.classList.add('bg-green-500', 'hover:bg-green-600');
-    }
-    if (UI.cancelEditButton) UI.cancelEditButton.classList.add('hidden');
-
-    state.productToEdit = null;
-    state.originalImageFile = null;
-
-    if (UI.productImageInput) UI.productImageInput.value = '';
-    if (UI.productFeatured) UI.productFeatured.checked = false;
-}
-
-// Função principal que salva produto (create/update)
-async function handleProductSubmit(e) {
-    e.preventDefault();
-    toggleLoading(true, 'loading');
-
-    const db = window.db;
-    const { collection, doc, setDoc, updateDoc } = window.firebase;
-
-    const isEditing = !!state.productToEdit;
-    let productRef = null;
-
-    try {
-        const productName = UI.productNameInput?.value.trim();
-        const productPrice = parseFloat(UI.productPriceInput?.value);
-        const productCategory = UI.productCategoryInput?.value.trim();
-        const productDescription = UI.productDescriptionInput?.value.trim();
-        const isFeatured = !!(UI.productFeatured && UI.productFeatured.checked);
-
-        if (!productName || isNaN(productPrice) || productPrice <= 0 || !productCategory) {
-            showNotification('Por favor, preencha nome, preço (válido) e categoria.', 'error');
-            toggleLoading(false);
-            return;
-        }
-
-        // Determinar referência (novo ou existente)
-        if (isEditing) {
-            productRef = doc(db, 'products', state.productToEdit.id);
-        } else {
-            productRef = doc(collection(db, 'products')); // gera um docRef com id automático
-        }
-
-        // Preparar image (se houver originalImageFile)
-        let productImageUrl = state.productToEdit?.imageUrl || 'https://placehold.co/400x300?text=Produto';
-
-        if (state.originalImageFile) {
-            // usa configurações atuais ou padrão
-            const maxW = state.imageSettings?.maxWidth || 800;
-            const quality = typeof state.imageSettings?.quality === 'number' ? state.imageSettings.quality : 0.85;
-
-            const processedDataUrl = await processImage(state.originalImageFile, maxW, quality);
-            // uploadImage aceita DataURL (converterá internamente)
-            const uploadedUrl = await uploadImage(processedDataUrl);
-            if (uploadedUrl) {
-                productImageUrl = uploadedUrl;
-            } else {
-                showNotification('Erro ao fazer upload da imagem. Produto não salvo.', 'error');
-                toggleLoading(false);
-                return;
-            }
-        }
-
-        // Montar objeto produto
-        const now = new Date().toISOString();
-        const productData = {
-            name: productName,
-            price: productPrice,
-            category: productCategory,
-            description: productDescription,
-            imageUrl: productImageUrl,
-            featured: isFeatured,
-            updatedAt: now,
-        };
-
-        // Se for criar novo, definir createdAt e id
-        if (!isEditing) {
-            productData.createdAt = now;
-            productData.id = productRef.id;
-            await setDoc(productRef, productData);
-            showNotification('Produto criado com sucesso!', 'success');
-        } else {
-            // manter createdAt existente
-            productData.id = state.productToEdit.id;
-            await setDoc(productRef, { ...state.productToEdit, ...productData }, { merge: true });
-            showNotification('Produto atualizado com sucesso!', 'success');
-        }
-
-        // Atualizar lista local e UI
-        listenToProducts();
-        renderAdminScreen();
-        resetProductForm();
-    } catch (error) {
-        console.error("Erro ao salvar produto:", error);
-        showNotification('Erro ao salvar produto. Veja console.', 'error');
-    } finally {
-        toggleLoading(false);
-    }
-}
-
-function editProduct(productId) {
-    const product = state.products.find(p => p.id === productId);
-    if (!product) return;
-
-    state.productToEdit = product;
-
-    if (UI.productIdInput) UI.productIdInput.value = product.id;
-    if (UI.productNameInput) UI.productNameInput.value = product.name;
-    if (UI.productPriceInput) UI.productPriceInput.value = product.price;
-    if (UI.productCategoryInput) UI.productCategoryInput.value = product.category;
-    if (UI.productDescriptionInput) UI.productDescriptionInput.value = product.description;
-    if (UI.productFeatured) UI.productFeatured.checked = !!product.featured;
-
-    if (UI.productFormTitle) UI.productFormTitle.textContent = translations[state.currentLanguage]['edit-product-title'] || 'Editar Produto';
-    if (UI.submitProductButton) {
-        UI.submitProductButton.textContent = translations[state.currentLanguage]['save-changes-button'] || 'Salvar Alterações';
-        UI.submitProductButton.classList.remove('bg-green-500', 'hover:bg-green-600');
-        UI.submitProductButton.classList.add('bg-blue-500', 'hover:bg-blue-600');
-    }
-    if (UI.cancelEditButton) UI.cancelEditButton.classList.remove('hidden');
-
-    const titleElement = document.getElementById('admin-panel-title');
-    if (titleElement) titleElement.scrollIntoView({ behavior: 'smooth' });
-}
-window.editProduct = editProduct;
-
-async function deleteProduct(productId) {
-    if (!confirm(translations[state.currentLanguage]['confirm-delete-product'] || 'Tem certeza que deseja excluir este produto?')) {
-        return;
-    }
-
-    toggleLoading(true, 'loading');
-    try {
-        const { doc, deleteDoc } = window.firebase;
-        const db = window.db;
-
-        await deleteDoc(doc(db, 'products', productId));
-        showNotification('Produto excluído com sucesso!', 'success');
-        listenToProducts();
-        renderAdminScreen();
-    } catch (error) {
-        console.error("Erro ao excluir produto: ", error);
-        showNotification('Erro ao excluir produto. Tente novamente.', 'error');
-    } finally {
-        toggleLoading(false);
-    }
-}
-window.deleteProduct = deleteProduct;
-
-// ====================================================================
-// NOVO MÓDULO: Alternar Visibilidade do Produto (O OLHO)
-// ====================================================================
-async function toggleProductVisibility(productId, isCurrentlyVisible) {
-    if (!state.isAdmin) {
-        showNotification('Apenas administradores podem alterar a visibilidade.', 'error');
-        return;
-    }
-    toggleLoading(true, 'Ajustando visibilidade...');
-    try {
-        const ref = doc(db, 'products', productId);
-        // O status é invertido em relação ao estado atual
-        const newVisibleStatus = !isCurrentlyVisible; 
-        
-        await updateDoc(ref, { 
-            visible: newVisibleStatus, // Este é o NOVO campo no Firebase
-            updatedAt: new Date().toISOString() 
-        });
-
-        // Após a atualização, recarrega os dados e a tela de Admin
-        listenToProducts(); 
-        renderAdminScreen();
-        
-        showNotification(newVisibleStatus ? 'Produto definido como VISÍVEL.' : 'Produto definido como OCULTO.', 'success');
-
-    } catch (error) {
-        console.error('Erro ao atualizar visibilidade:', error);
-        showNotification('Erro ao atualizar visibilidade do produto.', 'error');
-    } finally {
-        toggleLoading(false);
-    }
-}
-
-// Atualiza o status "featured" do produto (toggle)
-async function toggleProductFeatured(productId) {
-    try {
-        toggleLoading(true, 'loading');
-        const { doc, updateDoc } = window.firebase;
-        const db = window.db;
-
-        const product = state.products.find(p => p.id === productId);
-        if (!product) throw new Error('Produto não encontrado');
-
-        const newFeatured = !product.featured;
-        const ref = doc(db, 'products', productId);
-        await updateDoc(ref, { featured: newFeatured, updatedAt: new Date().toISOString() });
-
-        // atualizar localmente e na UI
-        listenToProducts();
-        renderAdminScreen();
-        showNotification(newFeatured ? 'Produto marcado como destaque.' : 'Produto removido dos destaques.', 'success');
-    } catch (error) {
-        console.error('Erro ao atualizar destaque:', error);
-        showNotification('Erro ao atualizar destaque do produto.', 'error');
-    } finally {
-        toggleLoading(false);
-    }
-}
-
-window.toggleProductVisibility = async function(productId) {
-    try {
-        const { doc, updateDoc } = window.firebase;
-        const db = window.db;
-
-        const product = state.products.find(p => p.id === productId);
-        if (!product) return;
-
-        const newStatus = !product.visible;
-
-        await updateDoc(doc(db, "products", productId), {
-            visible: newStatus
-        });
-
-        product.visible = newStatus;
-
-        showNotification(
-            newStatus ? "Produto agora está visível!" : "Produto ocultado!",
-            "success"
-        );
-
-        // Atualiza todas as telas que dependem de produtos
-        renderProductList();
-        renderHomeScreen();
-        renderProducts(state.products);
-
-    } catch (error) {
-        console.error("Erro ao alterar visibilidade:", error);
-        showNotification("Erro ao alterar status do produto.", "error");
-    }
-}
-
-window.toggleProductFeatured = toggleProductFeatured;
-
-// Filtragem simples
-function filterProducts(searchTerm, category = 'all') {
-    const term = (searchTerm || '').toLowerCase().trim();
-
-    const categoryFiltered = category === 'all'
-        ? state.products
-        : state.products.filter(product =>
-            product.category && product.category.toLowerCase() === category.toLowerCase()
-        );
-
-    if (!term) {
-        return categoryFiltered;
-    }
-
-    return categoryFiltered.filter(product =>
-        (product.name || '').toLowerCase().includes(term) ||
-        (product.description && product.description.toLowerCase().includes(term))
-    );
-}
-
-function handleSearch(event) {
-    const searchTerm = event.target.value;
-    const currentScreenId = state.navigationHistory[state.navigationHistory.length - 1];
-
-    if (searchTerm.trim() && currentScreenId !== 'products') {
-        navigateToScreen('products');
-    }
-
-    const currentCategory = 'all';
-    const filteredProducts = filterProducts(searchTerm, currentCategory);
-
-    renderProducts(filteredProducts);
-}
-
-// ====================================================================
-// Renderização de telas (home/settings/profile/admin)
-// ====================================================================
 function renderHomeScreen() {
-    const homeScreen = UI.screens['home'];
+    const container = document.getElementById('featured-products-container'); if (!container) return; if (state.carouselInterval) { clearInterval(state.carouselInterval); state.carouselInterval = null; } const featured = state.products.filter(p => p.featured && p.visible !== false); if (featured.length === 0) { document.getElementById('no-featured-message')?.classList.remove('hidden'); container.innerHTML = ''; container.classList.remove('carousel-wrapper'); } else { document.getElementById('no-featured-message')?.classList.add('hidden'); container.innerHTML = `<div class="carousel-wrapper overflow-hidden relative w-full rounded-2xl"><div id="carousel-track" class="flex transition-transform duration-700 ease-in-out h-64 md:h-80">${featured.map(p => `<div class="flex-shrink-0 w-full md:w-1/3 p-2 h-full cursor-pointer" onclick="navigateToScreen('product-detail', '${p.id}')"><img src="${p.imageUrl}" loading="lazy" onerror="this.src='https://placehold.co/400x300?text=Destaque'" class="w-full h-full object-cover rounded-xl shadow-md hover:scale-105 transition-transform duration-300" alt="Destaque"></div>`).join('')}</div></div>`; const track = document.getElementById('carousel-track'); if (track && featured.length > 1) { let index = 0; const itemsToShow = window.innerWidth >= 768 ? 3 : 1; const totalItems = featured.length; if (totalItems <= itemsToShow) return; state.carouselInterval = setInterval(() => { index++; if (index > totalItems - itemsToShow) { index = 0; } const percent = index * (100 / itemsToShow); track.style.transform = `translateX(-${percent}%)`; }, 3000); } } const viewBtn = document.getElementById('view-all-products-button'); if(viewBtn) viewBtn.onclick = () => navigateToScreen('products'); setLanguage(state.currentLanguage);
+}
 
-    // Verificação defensiva
-    if (!homeScreen) {
-        console.warn("Elemento #home-screen não encontrado. A renderização foi abortada.");
-        return; // interrompe a função sem lançar erro
+// ====================================================================
+// CART & ORDERS
+// ====================================================================
+function updateCartUI() {
+    const UI = getUI();
+    if (!UI.cartItemsContainer) return;
+    
+    // Auto-preencher endereço se salvo
+    const addressInput = document.getElementById('delivery-address-input');
+    if (addressInput && state.user && state.user.address && !addressInput.value) {
+        addressInput.value = state.user.address;
     }
 
-    const featuredContainer = document.getElementById('featured-products-container');
-    const noFeaturedMessage = document.getElementById('no-featured-message');
-
-    if (!state.products || state.products.length === 0) {
-        return; // NÃO renderiza nada até o snapshot vir completo
-    }
-
-    // Manipula a classe apenas se homeScreen existir
-    if (homeScreen.classList) {
-        homeScreen.classList.remove('hidden');
-    }
-
-    if (featuredContainer) {
-        featuredContainer.innerHTML = '';
-    }
-
-    const featuredProducts = state.products.filter(p => p.featured && p.visible !== false);
-
-    if (featuredProducts.length > 0) {
-        if (noFeaturedMessage?.classList) noFeaturedMessage.classList.add('hidden');
-        if (featuredContainer) {
-            featuredContainer.innerHTML = featuredProducts.slice(0, 3).map(renderProductCard).join('');
-        }
+    state.cart = state.cart.filter(i => i.quantity > 0);
+    localStorage.setItem('cart', JSON.stringify(state.cart));
+    const totalQty = state.cart.reduce((acc, item) => acc + item.quantity, 0);
+    if (UI.cartItemCount) UI.cartItemCount.textContent = totalQty;
+    if (state.cart.length === 0) {
+        UI.cartItemsContainer.innerHTML = `<p class="text-center text-secondary py-10">Carrinho vazio.</p>`;
+        UI.cartTotal.textContent = formatMoney(0);
+        UI.checkoutButton.disabled = true;
     } else {
-        if (noFeaturedMessage?.classList) noFeaturedMessage.classList.remove('hidden');
-    }
-
-    const viewAllBtn = document.getElementById('view-all-products-button');
-    if (viewAllBtn) {
-        viewAllBtn.onclick = () => navigateToScreen('products');
-    }
-
-    setLanguage(state.currentLanguage);
-}
-
-function renderSettingsScreen() {
-    const settingsScreen = UI.screens['settings'];
-    if (!settingsScreen) return;
-
-    settingsScreen.innerHTML = `
-        <div class="max-w-xl mx-auto bg-secondary p-10 rounded-2xl shadow-xl space-y-8">
-            <h2 class="text-3xl font-bold text-center text-brand-primary tracking-wide" data-lang="settings-title">Configurações</h2>
-
-            <div class="flex justify-between items-center border-b pb-4 border-main/40">
-                <label for="theme-toggle" class="text-lg font-medium text-primary tracking-wide" data-lang="theme-label">Tema Escuro</label>
-                <input type="checkbox" id="theme-toggle" class="toggle toggle-lg bg-main checked:bg-brand-primary">
-            </div>
-
-            <div class="flex justify-between items-center border-b pb-4 border-main/40">
-                <label for="lang-select" class="text-lg font-medium text-primary tracking-wide" data-lang="language-label">Idioma</label>
-                <select id="lang-select" class="p-2 border border-main/40 rounded-xl bg-primary text-primary shadow-inner">
-                    <option value="pt">Português (PT)</option>
-                    <option value="en">English (EN)</option>
-                </select>
-            </div>
-
-            ${state.user ? `
-                <button id="logout-button" class="w-full py-3 px-4 rounded-xl text-lg font-semibold text-white bg-red-500 hover:bg-red-600 shadow-md hover:shadow-lg transition-all duration-300" data-lang="logout-button-settings">Sair</button>
-            ` : ''}
-        </div>
-    `;
-
-    const themeToggle = document.getElementById('theme-toggle');
-    if (themeToggle) {
-        themeToggle.checked = document.documentElement.classList.contains('dark');
-        themeToggle.addEventListener('change', e => applyTheme(e.target.checked));
-    }
-
-    const langSelect = document.getElementById('lang-select') || document.getElementById('language-select');
-    if (langSelect) {
-        langSelect.value = state.currentLanguage;
-        langSelect.addEventListener('change', e => {
-            setLanguage(e.target.value);
-            if (state.user) renderHomeScreen();
-            renderSettingsScreen();
-        });
-    }
-
-    const logoutButton = document.getElementById('logout-button');
-    if (logoutButton) logoutButton.addEventListener('click', handleLogout);
-
-    setLanguage(state.currentLanguage);
-}
-
-function renderProfileScreen() {
-    if (!state.user) {
-        navigateToScreen('home');
-        return;
-    }
-
-    const profileScreen = document.getElementById('profile-screen');
-    if (!profileScreen) return;
-
-    profileScreen.innerHTML = `
-        <div class="max-w-xl mx-auto bg-secondary p-8 rounded-xl shadow-2xl space-y-6">
-            <h2 class="text-3xl font-bold text-center text-brand-primary" data-lang="profile-title">Meu Perfil</h2>
-
-            <div class="flex flex-col items-center border-b pb-6 border-main">
-                <img id="profile-pic-large" src="${state.user.profilePicture || 'https://placehold.co/150x150'}"
-                     alt="Perfil"
-                     class="w-32 h-32 rounded-full object-cover border-4 border-brand-primary mb-3 cursor-pointer transition-transform duration-300 hover:scale-105">
-                <h3 id="profile-name-display" class="text-xl font-semibold text-primary mb-2">${state.user.fullName}</h3>
-                <button id="change-profile-pic-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-                    Alterar Foto
-                </button>
-                <input type="file" id="profile-picture-input" class="hidden" accept="image/*">
-            </div>
-
-            <form id="profile-edit-form" class="space-y-4" novalidate>
-                <div>
-                    <label for="profile-full-name" class="block text-sm font-medium text-secondary">Nome Completo</label>
-                    <input type="text" id="profile-full-name" required class="mt-1 block w-full p-3 border border-main rounded-lg bg-primary text-primary focus:ring-brand-primary focus:border-brand-primary" value="${state.user.fullName}" autocomplete="name">
+        let total = 0;
+        UI.cartItemsContainer.innerHTML = state.cart.map(item => {
+            const safePrice = item.price || 0;
+            total += safePrice * item.quantity;
+            return `
+                <div class="flex items-center justify-between p-3 bg-primary rounded-lg shadow-sm cart-item">
+                    <img src="${item.imageUrl}" onerror="this.src='https://placehold.co/100x100?text=Item'" class="w-12 h-12 object-cover rounded-md">
+                    <div class="flex-grow mx-3 truncate">
+                        <p class="font-semibold truncate text-primary">${escapeHtml(item.name)}</p>
+                        <p class="text-sm text-secondary">${formatMoney(safePrice)} x ${item.quantity}</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="number" min="1" value="${item.quantity}" onchange="updateCartItemQuantity('${item.id}', this.value)" class="w-12 text-center border rounded-md bg-secondary text-primary">
+                        <button class="text-red-500 hover:text-red-700" onclick="removeFromCart('${item.id}')">&times;</button>
+                    </div>
                 </div>
-                <div>
-                    <label for="profile-phone-number" class="block text-sm font-medium text-secondary">Telefone (WhatsApp)</label>
-                    <input type="tel" id="profile-phone-number" required class="mt-1 block w-full p-3 border border-main rounded-lg bg-primary text-primary focus:ring-brand-primary focus:border-brand-primary" value="${state.user.phoneNumber || ''}" autocomplete="tel">
-                </div>
-                
-                <button type="submit" id="save-profile-button" data-lang="save-profile-button"
-                        class="w-full py-3 px-4 rounded-xl text-lg font-semibold text-white bg-blue-500 hover:bg-blue-600 transition-colors">
-                    Salvar Alterações
-                </button>
-            </form>
-
-            <div class="pt-6 border-t border-main">
-                 <h4 class="text-xl font-bold text-primary mb-3" data-lang="addresses-title">Meus Endereços</h4>
-                 <div id="saved-addresses-container" class="space-y-3">
-                     ${state.user.deliveryAddress
-                        ? `<div class="bg-primary p-3 rounded-lg flex justify-between items-center shadow-sm">
-                                <span class="text-sm text-primary font-medium">${state.user.deliveryAddress} (Padrão)</span>
-                                <button class="text-blue-500 hover:text-blue-700 text-sm">Editar</button>
-                           </div>`
-                        : `<p class="text-secondary" data-lang="no-addresses-msg">Nenhum endereço salvo.</p>`}
-                 </div>
-                 <button id="add-address-button" class="mt-4 w-full py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-hover transition-colors">
-                     + Adicionar Novo Endereço
-                 </button>
-            </div>
-
-            <button id="logout-profile-button" data-lang="logout-button-profile" class="w-full py-3 px-4 rounded-xl text-lg font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors duration-300 mt-6">
-                 Sair da Conta
-            </button>
-        </div>
-
-        <!-- MODAL MODERNO DE PREVIEW -->
-        <div id="profile-pic-modal" class="fixed inset-0 hidden justify-center items-center bg-black bg-opacity-70 z-50 opacity-0 transition-opacity duration-300">
-            <div class="relative">
-                <img id="profile-pic-modal-img" class="max-w-full max-h-[80vh] rounded-lg shadow-lg transform scale-90 transition-transform duration-300">
-                <button id="close-modal-btn" class="absolute top-2 right-2 text-white text-2xl font-bold hover:text-red-500">&times;</button>
-            </div>
-        </div>
-    `;
-
-    const profilePic = document.getElementById('profile-pic-large');
-    const changeBtn = document.getElementById('change-profile-pic-btn');
-    const fileInput = document.getElementById('profile-picture-input');
-    const modal = document.getElementById('profile-pic-modal');
-    const modalImg = document.getElementById('profile-pic-modal-img');
-    const closeModalBtn = document.getElementById('close-modal-btn');
-
-    // Abrir modal com animação
-    profilePic.addEventListener('click', () => {
-        modalImg.src = profilePic.src;
-        modal.classList.remove('hidden');
-        setTimeout(() => modal.classList.add('opacity-100'), 10);
-        modalImg.classList.add('scale-100');
-    });
-
-    // Fechar modal
-    const closeModal = () => {
-        modal.classList.remove('opacity-100');
-        modalImg.classList.remove('scale-100');
-        setTimeout(() => modal.classList.add('hidden'), 300);
-    };
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal || e.target === closeModalBtn) closeModal();
-    });
-    closeModalBtn.addEventListener('click', closeModal);
-
-    // Abrir seletor de arquivo
-    changeBtn.addEventListener('click', () => fileInput.click());
-
-    // Upload Cloudinary
-    fileInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file || !file.type.startsWith('image/')) return;
-
-        // Preview local imediato
-        const reader = new FileReader();
-        reader.onload = (evt) => profilePic.src = evt.target.result;
-        reader.readAsDataURL(file);
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', CONFIG.CLOUDINARY_UPLOAD_PRESET);
-
-        try {
-            const res = await fetch(`https://api.cloudinary.com/v1_1/${CONFIG.CLOUDINARY_CLOUD_NAME}/upload`, {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-            state.user.profilePicture = data.secure_url;
-            localStorage.setItem('currentUser', JSON.stringify(state.user));
-            showNotification('Foto de perfil atualizada com sucesso!', 'success');
-        } catch (err) {
-            console.error(err);
-            showNotification('Falha ao enviar a foto. Tente novamente.', 'error');
-        }
-    });
-
-    // Salvar alterações do perfil
-    const profileForm = document.getElementById('profile-edit-form');
-    profileForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const fullName = document.getElementById('profile-full-name').value.trim();
-        const phoneNumber = document.getElementById('profile-phone-number').value.trim();
-
-        state.user.fullName = fullName;
-        state.user.phoneNumber = phoneNumber;
-
-        // Atualizar exibição imediata
-        if (UI.profileNameDisplay) UI.profileNameDisplay.textContent = fullName;
-        if (UI.userProfileName) UI.userProfileName.textContent = fullName.split(' ')[0];
-
-        localStorage.setItem('currentUser', JSON.stringify(state.user));
-        showNotification('Perfil atualizado com sucesso!', 'success');
-    });
-
-    setLanguage(state.currentLanguage);
+            `;
+        }).join('');
+        UI.cartTotal.textContent = formatMoney(total);
+        UI.checkoutButton.disabled = false;
+    }
 }
+window.addToCart = (id, name, price, imageUrl) => {
+    const existing = state.cart.find(i => i.id === id);
+    if (existing) existing.quantity++; else state.cart.push({ id, name, price, imageUrl, quantity: 1 });
+    updateCartUI(); showNotification(`${name} adicionado!`, 'success');
+};
+window.removeFromCart = (id) => { state.cart = state.cart.filter(i => i.id !== id); updateCartUI(); };
+window.updateCartItemQuantity = (id, qty) => { const item = state.cart.find(i => i.id === id); if (item) item.quantity = parseInt(qty); updateCartUI(); };
 
-function setupProfilePictureModal() {
-    // Evita duplicar modal
-    if (document.getElementById('profile-pic-modal')) return;
+async function sendOrderViaWhatsApp() {
+    const address = document.getElementById('delivery-address-input')?.value.trim();
+    if (!address) { showNotification('Endereço obrigatório!', 'error'); return; }
+    
+    toggleLoading(true, 'loading');
 
-    const modal = document.createElement('div');
-    modal.id = 'profile-pic-modal';
-    modal.style = `
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.7);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-        display: none;
-        flex-direction: column;
-    `;
+    try {
+        const total = state.cart.reduce((a, b) => a + ((b.price || 0) * b.quantity), 0);
+        
+        // Verifica se devemos usar coordenadas ou texto. 
+        // Se o listener 'input' rodou, state.deliveryCoordinates será null
+        const finalLocation = state.deliveryCoordinates || null;
 
-    modal.innerHTML = `
-        <img id="profile-pic-preview" src="${state.user.profilePicture || 'https://placehold.co/150x150'}" 
-             class="max-w-xs max-h-96 rounded-lg mb-4 object-cover border-4 border-white">
-        <input type="file" id="profile-pic-input" accept="image/*" class="mb-3">
-        <button id="close-profile-pic-modal" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Fechar</button>
-    `;
-
-    document.body.appendChild(modal);
-
-    const input = modal.querySelector('#profile-pic-input');
-    const preview = modal.querySelector('#profile-pic-preview');
-    const closeBtn = modal.querySelector('#close-profile-pic-modal');
-
-    // Abrir modal
-    modal.style.display = 'flex';
-
-    // Fechar modal
-    closeBtn.onclick = () => modal.style.display = 'none';
-
-    // Trocar foto
-    input.onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file || !file.type.startsWith('image/')) return alert('Selecione uma imagem válida.');
-
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            preview.src = evt.target.result;
-            UI.profilePicLarge.src = evt.target.result;
-            // Salvar no estado ou enviar para servidor
-            state.profilePictureFile = file;
+        const orderData = {
+            userId: state.user.id,
+            userName: state.user.fullName,
+            userPhone: state.user.phoneNumber,
+            address: address,
+            items: state.cart,
+            total: total,
+            status: 'pending', 
+            location: finalLocation,
+            createdAt: new Date().toISOString()
         };
-        reader.readAsDataURL(file);
-    };
 
-    // Inicialmente escondido
-    modal.style.display = 'none';
+        const { collection, addDoc, doc, updateDoc } = window.firebase;
+        
+        // 1. Salvar Pedido
+        await addDoc(collection(window.db, 'orders'), orderData);
+
+        // 2. Salvar Endereço no Perfil do Usuário
+        if (state.user.address !== address) {
+             const userRef = doc(window.db, 'users', state.user.id);
+             await updateDoc(userRef, { address: address });
+             state.user.address = address;
+             localStorage.setItem('currentUser', JSON.stringify(state.user));
+        }
+
+        // --- GERAÇÃO DA MENSAGEM DO WHATSAPP ---
+        
+        let mapLink = '';
+        if (state.deliveryCoordinates && state.deliveryCoordinates.lat) {
+            // Alta precisão (Pino do Mapa)
+            mapLink = `https://www.google.com/maps/search/?api=1&query=${state.deliveryCoordinates.lat},${state.deliveryCoordinates.lng}`;
+        } else {
+            // Endereço Manual: Adiciona contexto (Moçambique) para melhorar a busca
+            const cleanAddress = address.trim();
+            // Evita duplicação se o usuário já digitou o país
+            const queryAddr = (cleanAddress.toLowerCase().includes('moçambique') || cleanAddress.toLowerCase().includes('mozambique')) 
+                              ? cleanAddress 
+                              : `${cleanAddress}, Moçambique`;
+                              
+            mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryAddr)}`;
+        }
+
+        // Lista de Itens Formatada e Limpa
+        const itemsText = state.cart.map(i => {
+             const subtotal = formatMoney((i.price || 0) * i.quantity);
+            return `📦 *${i.quantity}x ${i.name}*\n   💵 Total: ${subtotal}`;
+        }).join('\n\n');
+
+        let msg = `*NOVO PEDIDO - Nó&Laço*\n━━━━━━━━━━━━━━━━\n`;
+        msg += `👤 *Cliente:* ${state.user.fullName}\n`;
+        msg += `📞 *Tel:* ${state.user.phoneNumber}\n`;
+        msg += `📍 *Endereço:* ${address}\n`;
+        msg += `🔗 *Mapa:* ${mapLink}\n\n`;
+        msg += `*ITENS DO PEDIDO:*\n${itemsText}\n`;
+        msg += `━━━━━━━━━━━━━━━━\n`;
+        msg += `*💰 TOTAL: ${formatMoney(total)}*`;
+
+        window.open(`https://wa.me/${CONFIG.ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+        
+        state.cart = []; 
+        updateCartUI(); 
+        closeModal('order-confirm-modal');
+        closeModal('cart-modal', 'cart-panel');
+        showNotification('Pedido registrado com sucesso!', 'success');
+        
+    } catch (e) {
+        console.error("Erro ao salvar pedido", e);
+        showNotification('Erro ao registrar pedido. Tente novamente.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
 }
 
-function openProfilePictureModal() {
-    const modal = document.getElementById('profile-pic-modal');
-    if (modal) modal.style.display = 'flex';
-}
-
-// Render admin screen e inicializa handlers de imagem e lista de produtos
+// ====================================================================
+// ADMIN PAINEL
+// ====================================================================
 function renderAdminScreen() {
-    if (typeof resetProductForm === 'function') resetProductForm();
-
+    const UI = getUI();
     const adminScreen = UI.screens['admin'];
-    if (!adminScreen) return;
+    
+    // Switch de abas (Se não existir, cria)
+    let tabsContainer = document.getElementById('admin-tabs');
+    if (!tabsContainer) {
+        adminScreen.innerHTML = `
+            <div id="admin-panel-title" class="mb-6 flex justify-between items-center">
+                <h2 class="text-3xl font-bold text-brand-primary">Painel Admin</h2>
+                <div id="admin-tabs" class="flex space-x-2 bg-secondary p-1 rounded-lg border border-main">
+                    <button onclick="setAdminView('products')" id="tab-products" class="px-4 py-2 rounded-md text-sm font-bold transition-colors">Produtos</button>
+                    <button onclick="setAdminView('orders')" id="tab-orders" class="px-4 py-2 rounded-md text-sm font-bold transition-colors">Pedidos</button>
+                </div>
+            </div>
+            <div id="admin-content"></div>
+        `;
+        tabsContainer = document.getElementById('admin-tabs');
+    }
 
-    adminScreen.innerHTML = `
-        <div class="container mx-auto p-4 max-w-4xl">
-            <h2 id="admin-panel-title" class="text-2xl font-bold text-red-600 mb-6" data-lang="admin-panel-title">Painel de Administração</h2>
+    // Atualiza estilo das abas
+    document.getElementById('tab-products').className = `px-4 py-2 rounded-md text-sm font-bold transition-colors ${state.adminView === 'products' ? 'bg-brand-primary text-white' : 'text-primary hover:bg-primary'}`;
+    document.getElementById('tab-orders').className = `px-4 py-2 rounded-md text-sm font-bold transition-colors ${state.adminView === 'orders' ? 'bg-brand-primary text-white' : 'text-primary hover:bg-primary'}`;
 
-            <div class="bg-secondary rounded-lg shadow-md p-6 mb-8">
-                <h3 id="product-form-title" class="text-xl font-semibold mb-4" data-lang="add-new-product-title">Adicionar Novo Produto</h3>
-
-                <form id="product-form" class="space-y-4">
-                    <input type="hidden" id="product-id">
-
-                    <div>
-                        <label class="block text-primary font-medium mb-2">Nome do Produto</label>
-                        <input type="text" id="product-name" required class="w-full px-4 py-2 border border-main rounded-lg bg-primary text-primary focus:ring-2 focus:ring-red-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-primary font-medium mb-2">Preço (MZN)</label>
-                        <input type="number" id="product-price" step="0.01" required class="w-full px-4 py-2 border border-main rounded-lg bg-primary text-primary focus:ring-2 focus:ring-red-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-primary font-medium mb-2">Categoria</label>
-                        <input type="text" id="product-category" required class="w-full px-4 py-2 border border-main rounded-lg bg-primary text-primary focus:ring-2 focus:ring-red-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-primary font-medium mb-2">Descrição</label>
-                        <textarea id="product-description" rows="4" required class="w-full px-4 py-2 border border-main rounded-lg bg-primary text-primary focus:ring-2 focus:ring-red-500"></textarea>
-                    </div>
-
-                    <div>
-                        <label class="block text-primary font-medium mb-2">Imagem do Produto</label>
-
-                        <input type="file" id="product-image" accept="image/*" class="hidden">
-
-                        <button type="button" id="choose-image-button"
-                            class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 mb-3">
-                            📁 Escolher Imagem
-                        </button>
-
-                        <div id="image-preview-container" class="hidden mt-4">
-                            <div class="border-2 border-main rounded-lg p-4 bg-primary">
-                                <p class="text-sm font-semibold text-primary mb-2">Preview:</p>
-                                <img id="image-preview" class="max-w-full h-64 object-contain rounded-lg mb-3 mx-auto">
-                                <div id="image-info" class="text-sm text-secondary space-y-1 mb-4"></div>
-
-                                <div class="space-y-3 bg-secondary p-3 rounded">
-                                    <div>
-                                        <label class="text-sm">Tamanho Máx: <span id="size-value">800px</span></label>
-                                        <input type="range" id="max-size-slider" min="400" max="1200" value="800" step="50" class="w-full">
-                                    </div>
-                                    <div>
-                                        <label class="text-sm">Qualidade: <span id="quality-value">85%</span></label>
-                                        <input type="range" id="quality-slider" min="50" max="100" value="85" class="w-full">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                        <label class="flex items-center gap-2 text-sm">
-                            <input type="checkbox" id="product-featured" class="rounded">
-                            <span class="text-primary">Marcar como destaque</span>
+    const content = document.getElementById('admin-content');
+    
+    if (state.adminView === 'products') {
+        content.innerHTML = `
+             <div class="bg-secondary p-6 rounded-xl shadow-lg mb-8">
+                <h3 class="text-xl font-bold mb-4 text-primary" data-lang="add-new-product-title">Adicionar Novo Produto</h3>
+                <form id="product-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="product-name" placeholder="Nome do Produto" class="p-3 border border-main rounded-xl bg-primary text-primary" required>
+                    <input type="number" id="product-price" placeholder="Preço (MZN)" class="p-3 border border-main rounded-xl bg-primary text-primary" step="0.01" required>
+                    <select id="product-category" class="p-3 border border-main rounded-xl bg-primary text-primary">
+                        <option value="Colares">Colares</option>
+                        <option value="Pulseiras">Pulseiras</option>
+                        <option value="Brincos">Brincos</option>
+                        <option value="Aneis">Anéis</option>
+                        <option value="Conjuntos">Conjuntos</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                    <div class="flex items-center space-x-2 bg-primary p-3 border border-main rounded-xl">
+                        <label class="flex items-center cursor-pointer">
+                            <span class="mr-2 text-secondary">Imagem:</span>
+                            <input type="file" id="product-image" accept="image/*" class="text-sm text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-primary file:text-white hover:file:bg-brand-hover">
                         </label>
                     </div>
-
-                    <div class="flex gap-3">
-                        <button type="submit" id="submit-product-button" class="flex-1 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700" data-lang="add-product-button">Adicionar Produto</button>
-
-                        <button type="button" id="cancel-edit-button" class="hidden px-6 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600">Cancelar</button>
+                    <div id="image-preview-container" class="col-span-1 md:col-span-2 hidden justify-center">
+                         <img id="image-preview" src="" class="h-32 object-contain rounded-lg border border-main">
+                    </div>
+                    <textarea id="product-description" placeholder="Descrição Detalhada" class="p-3 border border-main rounded-xl bg-primary text-primary col-span-1 md:col-span-2" rows="3"></textarea>
+                    <div class="col-span-1 md:col-span-2 flex items-center">
+                        <input type="checkbox" id="product-featured" class="w-5 h-5 text-brand-primary rounded focus:ring-brand-primary border-gray-300">
+                        <label for="product-featured" class="ml-2 text-primary font-medium">Destacar este produto na Home</label>
+                    </div>
+                    <div class="col-span-1 md:col-span-2 flex space-x-2">
+                        <button type="submit" id="submit-product-button" class="flex-grow bg-brand-primary text-white py-3 rounded-xl hover:bg-brand-hover font-bold shadow-md transition-transform transform active:scale-95" data-lang="add-product-button">Adicionar Produto</button>
+                        <button type="button" id="cancel-edit-button" class="hidden px-6 bg-gray-500 text-white py-3 rounded-xl hover:bg-gray-600 font-bold shadow-md transition-transform transform active:scale-95">Cancelar</button>
                     </div>
                 </form>
             </div>
-
-            <div class="bg-secondary rounded-lg shadow-md overflow-hidden">
-                <h3 class="text-xl font-semibold p-6 border-b border-main">Produtos Cadastrados</h3>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-main">
-                        <thead class="bg-primary">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">Produto</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">Preço</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-product-list" class="bg-primary divide-y divide-main"></tbody>
-                    </table>
-                </div>
-                <p id="no-products-message" class="hidden text-center text-secondary py-8">Nenhum produto cadastrado ainda.</p>
+            
+            <div class="overflow-x-auto bg-secondary rounded-xl shadow-lg">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-primary text-secondary uppercase text-xs font-semibold">
+                        <tr>
+                            <th class="px-6 py-3 border-b border-main">Produto</th>
+                            <th class="px-6 py-3 border-b border-main">Preço</th>
+                            <th class="px-6 py-3 border-b border-main">Status</th>
+                            <th class="px-6 py-3 border-b border-main text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-product-list" class="divide-y divide-main text-primary text-sm"></tbody>
+                </table>
             </div>
-        </div>
-    `;
-
-    // Dar um pequeno tempo para o DOM montar e então ligar handlers
-    setTimeout(() => {
-        UI.productForm = document.getElementById('product-form');
-        UI.productIdInput = document.getElementById('product-id');
-        UI.productNameInput = document.getElementById('product-name');
-        UI.productPriceInput = document.getElementById('product-price');
-        UI.productCategoryInput = document.getElementById('product-category');
-        UI.productDescriptionInput = document.getElementById('product-description');
-        UI.productImageInput = document.getElementById('product-image');
-        UI.productFeatured = document.getElementById('product-featured');
-        UI.submitProductButton = document.getElementById('submit-product-button');
-        UI.cancelEditButton = document.getElementById('cancel-edit-button');
-        UI.productFormTitle = document.getElementById('product-form-title');
-        UI.adminProductList = document.getElementById('admin-product-list');
-        UI.noProductsMessage = document.getElementById('no-products-message');
-
-        // Hooks imagem
-        setupImageHandlers();
-
-        // botão escolher imagem
-        const chooseBtn = document.getElementById('choose-image-button');
-        if (chooseBtn) chooseBtn.addEventListener('click', () => document.getElementById('product-image')?.click());
-
-        // listeners do form
-        if (UI.productForm) UI.productForm.addEventListener('submit', handleProductSubmit);
-        if (UI.cancelEditButton) UI.cancelEditButton.addEventListener('click', resetProductForm);
-
-        // render list
-        renderProductList();
-    }, 80);
-
-    if (typeof setLanguage === 'function' && state.currentLanguage) {
-        setLanguage(state.currentLanguage);
-    }
-}
-
-function renderProductList() {
-    if (!UI.adminProductList || !UI.noProductsMessage) return;
-
-    UI.adminProductList.innerHTML = '';
-
-    if (state.products.length === 0) {
-        UI.noProductsMessage.classList.remove('hidden');
-        return;
-    } else {
-        UI.noProductsMessage.classList.add('hidden');
-    }
-
-    state.products.forEach(product => {
-        const visible = product.visible !== false; // padrão = visível
-
-        UI.adminProductList.innerHTML += `
-            <tr class="hover:bg-primary/50 transition-colors duration-200">
-                
-                <!-- Produto + Imagem -->
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center">
-                        <img class="h-10 w-10 rounded-full object-cover mr-4" 
-                             src="${product.imageUrl || 'https://placehold.co/100x100?text=P'}" 
-                             alt="${product.name}">
-                        <div class="text-sm font-medium text-primary">${product.name}</div>
-                    </div>
-                </td>
-
-                <!-- Preço -->
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary">
-                    ${CONFIG.CURRENCY_SYMBOL} ${(product.price || 0).toFixed(2)}
-                </td>
-
-                <!-- STATUS -->
-                <td class="px-6 py-4 whitespace-nowrap space-x-1">
-
-                    ${product.featured
-                        ? `<span class="px-2 inline-flex text-xs font-semibold rounded-full bg-green-100 text-green-800">Destaque</span>`
-                        : `<span class="px-2 inline-flex text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Normal</span>`
-                    }
-
-                    ${visible
-                        ? `<span class="px-2 inline-flex text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Visível</span>`
-                        : `<span class="px-2 inline-flex text-xs font-semibold rounded-full bg-red-100 text-red-800">Oculto</span>`
-                    }
-                </td>
-
-                <!-- AÇÕES -->
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-
-                    <button onclick="editProduct('${product.id}')"
-                        class="text-blue-600 hover:text-blue-900 transition">
-                        Editar
-                    </button>
-
-                    <button onclick="deleteProduct('${product.id}')"
-                        class="text-red-600 hover:text-red-900 transition">
-                        Excluir
-                    </button>
-
-                    <button onclick="toggleProductFeatured('${product.id}')"
-                        class="text-green-600 hover:text-green-900 transition">
-                        ${product.featured ? 'Remover Destaque' : 'Marcar Destaque'}
-                    </button>
-
-                    <button onclick="toggleProductVisibility('${product.id}')"
-                        class="text-yellow-600 hover:text-yellow-800 transition flex items-center gap-1">
-
-                        ${visible ? '👁️ Ocultar' : '👁️‍🗨️ Exibir'}
-                    </button>
-
-                </td>
-            </tr>
         `;
-    });
-}
-
-// Setup do preview e sliders
-function setupImageHandlers() {
-    const fileInput = document.getElementById('product-image');
-    const previewContainer = document.getElementById('image-preview-container');
-    const previewImage = document.getElementById('image-preview');
-    const imageInfo = document.getElementById('image-info');
-
-    const maxSizeSlider = document.getElementById('max-size-slider');
-    const sizeValue = document.getElementById('size-value');
-
-    const qualitySlider = document.getElementById('quality-slider');
-    const qualityValue = document.getElementById('quality-value');
-
-    if (!fileInput) return;
-
-    // substituir input para remover listeners antigos
-    const newFileInput = fileInput.cloneNode(true);
-    fileInput.parentNode.replaceChild(newFileInput, fileInput);
-
-    newFileInput.addEventListener('change', function (e) {
-        const file = e.target.files[0];
-
-        if (file) {
-            if (!file.type.startsWith('image/')) {
-                alert('Por favor, selecione apenas arquivos de imagem.');
-                return;
-            }
-
-            state.originalImageFile = file;
-
-            const reader = new FileReader();
-            reader.onload = function (evt) {
-                if (previewContainer) previewContainer.classList.remove('hidden');
-                if (previewImage) previewImage.src = evt.target.result;
-
-                if (imageInfo) {
-                    imageInfo.innerHTML = `
-                        <p><strong>Arquivo:</strong> ${file.name}</p>
-                        <p><strong>Tamanho Original:</strong> ${(file.size / 1024).toFixed(2)} KB</p>
-                    `;
-                }
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-
-    if (maxSizeSlider && sizeValue) {
-        maxSizeSlider.value = state.imageSettings.maxWidth || 800;
-        sizeValue.textContent = maxSizeSlider.value + 'px';
-        maxSizeSlider.addEventListener('input', (e) => {
-            sizeValue.textContent = e.target.value + 'px';
-            state.imageSettings.maxWidth = parseInt(e.target.value, 10);
-        });
-    }
-
-    if (qualitySlider && qualityValue) {
-        qualitySlider.value = Math.round((state.imageSettings.quality || 0.85) * 100);
-        qualityValue.textContent = qualitySlider.value + '%';
-        qualitySlider.addEventListener('input', (e) => {
-            qualityValue.textContent = e.target.value + '%';
-            state.imageSettings.quality = parseInt(e.target.value, 10) / 100;
-        });
+        renderProductListRows(); 
+    } else {
+        // ORDERS VIEW
+        content.innerHTML = `
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-primary">Gerenciar Pedidos</h3>
+                <button onclick="renderAdminScreen()" class="p-2 bg-primary rounded-full hover:bg-gray-200 text-primary" title="Atualizar"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v3.276a1 1 0 01-2 0V14.899a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg></button>
+            </div>
+            <div id="admin-orders-list" class="space-y-4">
+                <div class="flex justify-center py-8"><svg class="animate-spin h-8 w-8 text-brand-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>
+            </div>
+        `;
+        fetchAdminOrders();
     }
 }
 
-// ====================================================================
-// FUNÇÃO PARA CRIAR CADA LINHA DA TABELA ADMIN
-// ====================================================================
-function createAdminProductRow(product) {
-    // Se o produto não tem 'visible' definido, assumimos que é true (compatibilidade)
-    const isVisible = product.visible !== false; 
-    const isFeatured = product.featured;
+window.setAdminView = (view) => {
+    state.adminView = view;
+    renderAdminScreen();
+}
 
-    // Estilo para destacar produtos ocultos (opcional, mas útil)
-    const rowClass = isVisible ? 'hover:bg-main' : 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100/50'; 
-    const iconClass = isVisible ? 'fas fa-eye' : 'fas fa-eye-slash';
-    const titleText = isVisible ? 'Ocultar Produto (Visível)' : 'Exibir Produto (Oculto)';
+function renderProductListRows() {
+    const list = document.getElementById('admin-product-list'); 
+    if (!list) return;
     
-    // O template HTML para a linha da tabela
-    return `
-        <tr class="transition-colors duration-200 ${rowClass}" data-id="${product.id}">
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary">
-                ${product.name}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary">
-                ${product.category || 'N/A'}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary">
-                ${CONFIG.CURRENCY_SYMBOL} ${product.price.toFixed(2)}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <span class="${isFeatured ? 'text-green-600' : 'text-gray-500'}">
-                    ${isFeatured ? 'Sim' : 'Não'}
-                </span>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3 flex items-center justify-end">
-                
-                <button 
-                    onclick="toggleProductVisibility('${product.id}', ${isVisible})" 
-                    title="${titleText}"
-                    class="text-blue-500 hover:text-blue-700 transition-colors duration-200 p-1"
-                >
-                    <i class="${iconClass} text-lg"></i>
-                </button>
-
-                <button 
-                    onclick="editProduct('${product.id}')" 
-                    title="Editar Produto"
-                    class="text-brand-primary hover:text-brand-hover transition-colors duration-200 p-1"
-                >
-                    <i class="fas fa-edit"></i>
-                </button>
-
-                <button 
-                    onclick="toggleProductFeatured('${product.id}', ${isFeatured})" 
-                    title="${isFeatured ? 'Remover Destaque' : 'Marcar Destaque'}"
-                    class="${isFeatured ? 'text-yellow-500 hover:text-yellow-700' : 'text-gray-500 hover:text-gray-700'} transition-colors duration-200 p-1"
-                >
-                    <i class="fas fa-star"></i>
-                </button>
-                
-                <button 
-                    onclick="deleteProduct('${product.id}')" 
-                    title="Excluir Produto"
-                    class="text-red-500 hover:text-red-700 transition-colors duration-200 p-1"
-                >
-                    <i class="fas fa-trash"></i>
-                </button>
+    list.innerHTML = state.products.map(p => {
+        const safePrice = p.price || 0;
+        return `
+        <tr class="border-b border-main hover:bg-main/10">
+            <td class="px-6 py-4 flex items-center"><img src="${p.imageUrl}" onerror="this.src='https://placehold.co/100x100'" class="w-10 h-10 rounded-full mr-3 object-cover"><span>${escapeHtml(p.name)}</span></td>
+            <td class="px-6 py-4">${formatMoney(safePrice)}</td>
+            <td class="px-6 py-4 space-x-1"><span class="px-2 py-1 text-xs rounded-full ${p.featured ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">Destaque: ${p.featured ? 'Sim' : 'Não'}</span><span class="px-2 py-1 text-xs rounded-full ${p.visible !== false ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}">${p.visible !== false ? 'Visível' : 'Oculto'}</span></td>
+            <td class="px-6 py-4 space-x-2 text-right">
+                <button onclick="toggleProductVisibility('${p.id}')" title="Visibilidade" class="text-gray-600 hover:text-blue-600">👁️</button>
+                <button onclick="editProduct('${p.id}')" title="Editar" class="text-blue-600">✏️</button>
+                <button onclick="toggleProductFeatured('${p.id}')" title="Destaque" class="text-yellow-500">⭐</button>
+                <button onclick="deleteProduct('${p.id}')" title="Excluir" class="text-red-600">🗑️</button>
             </td>
         </tr>
-    `;
+    `}).join('');
+
+    const form = document.getElementById('product-form');
+    if(form && !form.dataset.listening) {
+        form.addEventListener('submit', handleProductSubmit);
+        document.getElementById('product-image').addEventListener('change', (e) => { if(e.target.files[0]) { state.originalImageFile = e.target.files[0]; const reader = new FileReader(); reader.onload = (ev) => { document.getElementById('image-preview').src = ev.target.result; document.getElementById('image-preview-container').classList.remove('hidden'); }; reader.readAsDataURL(e.target.files[0]); } });
+        document.getElementById('cancel-edit-button').addEventListener('click', resetProductForm);
+        form.dataset.listening = "true";
+    }
 }
 
-// ====================================================================
-// Eventos globais e inicialização
-// ====================================================================
-function setupEventListeners() {
-    if (UI.registrationForm) UI.registrationForm.addEventListener('submit', handleRegistration);
-    if (UI.profilePictureInput) UI.profilePictureInput.addEventListener('change', handleProfilePictureChange);
+async function fetchAdminOrders() {
+    const list = document.getElementById('admin-orders-list');
+    if (!list) return;
 
-    if (UI.searchInput) {
-        UI.searchInput.addEventListener('keyup', handleSearch);
-        UI.searchInput.addEventListener('change', handleSearch);
+    const { collection, getDocs, orderBy, query } = window.firebase;
+    let querySnapshot;
+
+    // SAFE GUARD 2.0: Verifica se 'limit' foi carregado corretamente do Firebase
+    // Acessa diretamente do window.firebase para evitar variáveis stale
+    let safeLimit = null;
+    if (window.firebase && typeof window.firebase.limit === 'function') {
+        safeLimit = window.firebase.limit(50);
     }
 
-    if (UI.backButton) UI.backButton.addEventListener('click', goBack);
-    if (UI.settingsButton) UI.settingsButton.addEventListener('click', () => navigateToScreen('settings'));
-    if (UI.viewAllProductsButton) UI.viewAllProductsButton?.addEventListener('click', () => navigateToScreen('products'));
+    try {
+        // Tenta buscar ordenado (Requer índice no Firebase Console)
+        // Usamos array de constraints para permitir adicionar o limit condicionalmente
+        const queryConstraints = [collection(window.db, "orders"), orderBy("createdAt", "desc")];
+        if (safeLimit) queryConstraints.push(safeLimit);
+        
+        const q = query(...queryConstraints);
+        querySnapshot = await getDocs(q);
+    } catch (e) {
+        console.warn("Falha na ordenação via DB (índice ausente?), tentando ordenação local...", e);
+        try {
+            // Fallback: Busca simples (sem orderBy)
+            // Também usamos o array para proteger o limit
+            const fallbackConstraints = [collection(window.db, "orders")];
+            if (safeLimit) fallbackConstraints.push(safeLimit);
 
-    if (UI.userProfilePic) UI.userProfilePic.addEventListener('click', () => navigateToScreen('profile'));
-    if (UI.userProfileName) UI.userProfileName.addEventListener('click', () => navigateToScreen('profile'));
+            const qFallback = query(...fallbackConstraints);
+            querySnapshot = await getDocs(qFallback);
+        } catch (e2) {
+            console.error("Erro crítico:", e2);
+            list.innerHTML = `<p class="text-center text-red-500 py-8">Erro crítico ao carregar pedidos.<br><span class="text-xs text-gray-500">${e2.message}</span></p>`;
+            return;
+        }
+    }
+        
+    if (querySnapshot.empty) {
+        list.innerHTML = `<p class="text-center text-secondary py-8">Nenhum pedido encontrado.</p>`;
+        return;
+    }
 
-    if (UI.cartButton) UI.cartButton.addEventListener('click', openCartModal);
-    if (UI.closeCartButton) UI.closeCartButton.addEventListener('click', closeCartModal);
-    if (UI.checkoutButton) UI.checkoutButton.addEventListener('click', openOrderConfirmModal);
+    // Processa os dados
+    let orders = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    if (UI.cancelOrderButton) UI.cancelOrderButton.addEventListener('click', closeOrderConfirmModal);
-    if (UI.sendOrderWhatsappButton) UI.sendOrderWhatsappButton.addEventListener('click', sendOrderViaWhatsApp);
+    // Garante ordenação se o fallback foi usado
+    orders.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
-    if (UI.profileEditForm) UI.profileEditForm.addEventListener('submit', handleProfileEdit);
-    if (UI.logoutProfileButton) UI.logoutProfileButton.addEventListener('click', handleLogout);
+    list.innerHTML = orders.map(order => {
+        const date = new Date(order.createdAt).toLocaleString(state.currentLanguage === 'pt' ? 'pt-BR' : 'en-US');
+        
+        let statusColor = 'bg-gray-100 text-gray-800';
+        if (order.status === 'completed') statusColor = 'bg-green-100 text-green-800';
+        if (order.status === 'cancelled') statusColor = 'bg-red-100 text-red-800';
+        if (order.status === 'pending') statusColor = 'bg-yellow-100 text-yellow-800';
 
-    if (UI.adminButton) {
-        UI.adminButton.addEventListener('click', () => {
-            if (state.isAdmin) {
-                navigateToScreen('admin');
-            } else {
-                if (UI.adminLoginModal) {
-                    UI.adminLoginModal.classList.remove('hidden', 'opacity-0');
-                    setTimeout(() => UI.adminLoginModal.classList.remove('opacity-0'), 10);
+        const itemsList = order.items.map(i => `<div class="text-sm text-secondary flex justify-between"><span>${i.quantity}x ${i.name}</span><span>${formatMoney((i.price || 0) * i.quantity)}</span></div>`).join('');
+
+        // Link do mapa no pedido do Admin
+        let mapLinkButton = '';
+        if (order.location && order.location.lat && order.location.lng) {
+             mapLinkButton = `<a href="https://www.google.com/maps/search/?api=1&query=${order.location.lat},${order.location.lng}" target="_blank" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-bold hover:bg-blue-200 mr-auto sm:mr-0 sm:ml-2 text-center flex items-center justify-center" title="Ver localização exata">📍 Mapa (Pino)</a>`;
+        } else if (order.address) {
+             const cleanAddress = order.address.toLowerCase().includes('moçambique') ? order.address : `${order.address}, Moçambique`;
+             mapLinkButton = `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanAddress)}" target="_blank" class="px-4 py-2 bg-gray-100 text-blue-700 rounded-lg text-sm font-bold hover:bg-gray-200 mr-auto sm:mr-0 sm:ml-2 text-center flex items-center justify-center" title="Buscar no mapa">📍 Mapa (Busca)</a>`;
+        }
+
+        return `
+            <div class="bg-secondary border border-main rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start border-b border-main pb-3 mb-3">
+                    <div>
+                        <p class="font-bold text-lg text-primary">${order.userName}</p>
+                        <p class="text-sm text-secondary">${order.userPhone} | ${date}</p>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase ${statusColor}">${order.status === 'pending' ? 'Pendente' : (order.status === 'completed' ? 'Concluído' : 'Cancelado')}</span>
+                </div>
+                <div class="mb-3">
+                        <p class="text-sm font-semibold text-primary mb-1">Endereço:</p>
+                        <p class="text-sm text-secondary italic bg-primary p-2 rounded">${escapeHtml(order.address)}</p>
+                </div>
+                <div class="mb-4 bg-primary p-3 rounded-lg">
+                    ${itemsList}
+                    <div class="flex justify-between font-bold text-primary mt-2 border-t border-main pt-2">
+                        <span>Total</span>
+                        <span>${formatMoney(order.total)}</span>
+                    </div>
+                </div>
+                ${order.status === 'pending' ? `
+                <div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-2 border-t border-main mt-2">
+                        ${mapLinkButton}
+                        <button onclick="updateOrderStatus('${order.id}', 'cancelled')" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-bold hover:bg-red-200">Cancelar</button>
+                        <button onclick="updateOrderStatus('${order.id}', 'completed')" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-bold hover:bg-green-200">Concluir</button>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+window.updateOrderStatus = async (orderId, newStatus) => {
+    if(!confirm(`Mudar status para ${newStatus}?`)) return;
+    try {
+        await window.firebase.updateDoc(window.firebase.doc(window.db, "orders", orderId), { status: newStatus });
+        fetchAdminOrders(); // Recarrega
+        showNotification('Status atualizado!', 'success');
+    } catch(e) {
+        showNotification('Erro ao atualizar.', 'error');
+    }
+}
+
+function handleAdminLogin(e) {
+    e.preventDefault();
+    const code = document.getElementById('admin-code').value;
+    if (btoa(code) === CONFIG.ADMIN_HASH && state.user) {
+        state.user.role = 'admin'; 
+        localStorage.setItem('currentUser', JSON.stringify(state.user));
+        document.getElementById('admin-button').classList.remove('hidden');
+        closeModal('admin-login-modal');
+        navigateToScreen('admin'); 
+        showNotification('Admin ativado!', 'success');
+    } else { 
+        showNotification('Código inválido ou não logado.', 'error'); 
+    }
+}
+async function handleProductSubmit(e) {
+    e.preventDefault(); toggleLoading(true);
+    try {
+        const name = document.getElementById('product-name').value;
+        const price = parseFloat(document.getElementById('product-price').value);
+        const category = document.getElementById('product-category').value;
+        const desc = document.getElementById('product-description').value;
+        const featured = document.getElementById('product-featured').checked;
+        const { doc, setDoc, collection } = window.firebase;
+        let imgUrl = state.productToEdit?.imageUrl || '';
+        if (state.originalImageFile) { const blob = await processImage(state.originalImageFile); const uploaded = await uploadImage(blob); if (uploaded) imgUrl = uploaded; }
+        const data = { name, price, category, description: desc, featured, imageUrl: imgUrl, updatedAt: new Date().toISOString() };
+        if (state.productToEdit) await setDoc(doc(window.db, 'products', state.productToEdit.id), data, { merge: true });
+        else { const newRef = doc(collection(window.db, 'products')); await setDoc(newRef, { ...data, id: newRef.id, createdAt: new Date().toISOString(), visible: true }); }
+        showNotification('Produto salvo!', 'success'); resetProductForm();
+        if(state.adminView === 'products') renderProductListRows();
+    } catch (err) { console.error(err); showNotification('Erro ao salvar.', 'error'); } finally { toggleLoading(false); }
+}
+function resetProductForm() {
+    document.getElementById('product-form').reset(); state.productToEdit = null; state.originalImageFile = null;
+    document.getElementById('image-preview-container').classList.add('hidden');
+    document.getElementById('submit-product-button').textContent = "Adicionar Produto";
+    document.getElementById('cancel-edit-button').classList.add('hidden');
+}
+window.editProduct = (id) => {
+    const p = state.products.find(x => x.id === id); if (!p) return; state.productToEdit = p;
+    document.getElementById('product-name').value = p.name; document.getElementById('product-price').value = p.price;
+    document.getElementById('product-category').value = p.category; document.getElementById('product-description').value = p.description;
+    document.getElementById('product-featured').checked = p.featured;
+    document.getElementById('submit-product-button').textContent = "Salvar Alterações";
+    document.getElementById('cancel-edit-button').classList.remove('hidden');
+    document.getElementById('admin-panel-title').scrollIntoView({ behavior: 'smooth' });
+};
+window.deleteProduct = async (id) => { if (!confirm('Excluir?')) return; try { await window.firebase.deleteDoc(window.firebase.doc(window.db, 'products', id)); showNotification('Excluído.', 'success'); } catch (e) { showNotification('Erro.', 'error'); } };
+window.toggleProductVisibility = async (id) => { const p = state.products.find(x => x.id === id); try { await window.firebase.updateDoc(window.firebase.doc(window.db, 'products', id), { visible: !p.visible }); showNotification(`Produto ${!p.visible ? 'visível' : 'oculto'}.`, 'success'); } catch (e) { showNotification('Erro.', 'error'); } };
+window.toggleProductFeatured = async (id) => { const p = state.products.find(x => x.id === id); try { await window.firebase.updateDoc(window.firebase.doc(window.db, 'products', id), { featured: !p.featured }); } catch (e) { console.error(e); } };
+
+function renderSettingsScreen() {
+    const el = document.getElementById('settings-screen');
+    el.innerHTML = `
+        <div class="max-w-xl mx-auto bg-secondary p-8 rounded-xl shadow-lg space-y-6">
+            <h2 class="text-2xl font-bold text-center" data-lang="settings-title">Configurações</h2>
+            <div class="flex justify-between items-center border-b border-main pb-4">
+                <span data-lang="theme-label">Tema Escuro</span>
+                <input type="checkbox" id="theme-toggle" class="w-6 h-6" ${document.documentElement.classList.contains('dark') ? 'checked' : ''}>
+            </div>
+            <div class="flex justify-between items-center border-b border-main pb-4">
+                <span data-lang="language-label">Idioma</span>
+                <select id="lang-select" class="bg-primary border border-main rounded p-1">
+                    <option value="pt">Português</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+            <button id="logout-button" class="w-full bg-red-500 text-white py-3 rounded-lg" data-lang="logout-button-settings">Sair</button>
+        </div>
+    `;
+    
+    document.getElementById('theme-toggle').onchange = (e) => applyTheme(e.target.checked);
+    document.getElementById('lang-select').value = state.currentLanguage;
+    document.getElementById('lang-select').onchange = (e) => {
+        setLanguage(e.target.value);
+        setTimeout(renderSettingsScreen, 50);
+    };
+    document.getElementById('logout-button').onclick = handleLogout;
+    setLanguage(state.currentLanguage);
+}
+
+async function renderProfileScreen() {
+    if (!state.user) return;
+    const el = document.getElementById('profile-screen');
+    const favoriteProducts = state.products.filter(p => state.favorites.includes(p.id));
+    const hasFavorites = favoriteProducts.length > 0;
+    const favTitle = translations[state.currentLanguage]['favorites-title'] || 'Meus Favoritos';
+    const ordersTitle = translations[state.currentLanguage]['orders-history-title'] || 'Meus Pedidos';
+    const noOrdersMsg = translations[state.currentLanguage]['no-orders-message'] || 'Você ainda não fez nenhum pedido.';
+    let favHtml = '';
+    if (hasFavorites) {
+        favHtml = `<div class="mt-8"><h3 class="text-xl font-bold mb-4">${favTitle}</h3><div class="grid grid-cols-2 gap-4">${favoriteProducts.map(p => `<div class="bg-primary rounded-lg shadow p-2 cursor-pointer" onclick="navigateToScreen('product-detail', '${p.id}')"><img src="${p.imageUrl}" onerror="this.src='https://placehold.co/100x100?text=Item'" class="w-full h-24 object-cover rounded mb-2"><p class="text-sm font-semibold truncate">${escapeHtml(p.name)}</p><p class="text-xs text-brand-primary font-bold">${formatMoney(p.price || 0)}</p></div>`).join('')}</div></div>`;
+    }
+    let ordersHtml = `<div class="mt-8"><h3 class="text-xl font-bold mb-4">${ordersTitle}</h3><div class="flex justify-center"><svg class="animate-spin h-6 w-6 text-brand-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div></div>`;
+    el.innerHTML = `<div class="max-w-xl mx-auto bg-secondary p-8 rounded-xl shadow-lg space-y-6"><h2 class="text-2xl font-bold text-center" data-lang="profile-title">Meu Perfil</h2><div class="flex flex-col items-center"><img src="${state.user.profilePicture}" onerror="this.src='https://placehold.co/100x100?text=User'" class="w-24 h-24 rounded-full border-4 border-brand-primary mb-2"><h3 class="text-xl font-semibold">${state.user.fullName}</h3></div><div class="space-y-4"><input type="text" value="${state.user.fullName}" class="w-full p-3 border border-main rounded bg-primary text-primary" disabled><input type="text" value="${state.user.phoneNumber}" class="w-full p-3 border border-main rounded bg-primary text-primary" disabled></div>${favHtml}<div id="orders-container">${ordersHtml}</div><button onclick="handleLogout()" class="w-full bg-red-500 text-white py-3 rounded-lg mt-6">Sair</button></div>`;
+    setLanguage(state.currentLanguage);
+    try {
+        const { collection, query, where, getDocs } = window.firebase;
+        const q = query(collection(window.db, "orders"), where("userId", "==", state.user.id));
+        const querySnapshot = await getDocs(q);
+        const ordersContainer = document.getElementById('orders-container');
+        if (querySnapshot.empty) {
+            ordersContainer.innerHTML = `<div class="mt-8"><h3 class="text-xl font-bold mb-4">${ordersTitle}</h3><p class="text-secondary text-center py-4">${noOrdersMsg}</p></div>`;
+        } else {
+            const sortedDocs = querySnapshot.docs.sort((a, b) => new Date(b.data().createdAt) - new Date(a.data().createdAt));
+            const list = sortedDocs.map(doc => {
+                const data = doc.data();
+                const date = new Date(data.createdAt).toLocaleDateString(state.currentLanguage === 'pt' ? 'pt-BR' : 'en-US');
+                const itemCount = data.items.reduce((a,b)=>a+b.quantity, 0);
+                return `<div class="order-card p-4 rounded-lg shadow mb-3 border border-main bg-primary"><div class="flex justify-between items-center mb-2"><span class="text-sm text-secondary">${date}</span><span class="status-badge status-${data.status}">${data.status === 'pending' ? 'Pendente' : (data.status === 'completed' ? 'Concluído' : 'Cancelado')}</span></div><div class="flex justify-between items-center font-bold"><span>${itemCount} Itens</span><span class="text-brand-primary">${formatMoney(data.total)}</span></div></div>`;
+            }).join('');
+            ordersContainer.innerHTML = `<div class="mt-8"><h3 class="text-xl font-bold mb-4">${ordersTitle}</h3><div class="space-y-2">${list}</div></div>`;
+        }
+    } catch (e) {
+        console.error('Erro profile:', e);
+        const ordersContainer = document.getElementById('orders-container');
+        if(ordersContainer) ordersContainer.innerHTML = `<div class="mt-8"><p class="text-red-500 text-center">Erro ao carregar histórico.</p></div>`; 
+    }
+}
+
+function setupEventListeners() {
+    const UI = getUI();
+    
+    // LOGIN FORM EVENTS
+    if (UI.registrationForm) {
+        // Evento padrão de submit
+        UI.registrationForm.addEventListener('submit', handleRegistration);
+        
+        // Listener redundante no botão de submit para mobile (caso o teclado virtual interfira no evento de submit padrão)
+        const submitBtn = UI.registrationForm.querySelector('button[type="submit"]');
+        if(submitBtn) {
+            submitBtn.addEventListener('click', (e) => {
+                // Se o formulário for válido, chama a função. Se não, deixa o navegador mostrar os erros de validação HTML5.
+                if(UI.registrationForm.checkValidity()) {
+                    handleRegistration(e);
                 }
+            });
+        }
+    }
+
+    // PROFILE PICTURE UPLOAD
+    if (UI.profilePictureInput) {
+        UI.profilePictureInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if(file) {
+                state.profilePictureFile = file;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const preview = document.getElementById('profile-preview');
+                    const container = document.getElementById('profile-preview-container');
+                    const icon = document.getElementById('default-profile-icon');
+                    
+                    if(preview) preview.src = ev.target.result;
+                    if(container) container.classList.remove('hidden');
+                    if(icon) icon.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
             }
         });
     }
 
-    if (UI.adminLoginForm) UI.adminLoginForm.addEventListener('submit', handleAdminLogin);
-    if (UI.closeAdminModalButton) UI.closeAdminModalButton.addEventListener('click', closeAdminModal);
-
-    window.navigateToScreen = navigateToScreen;
-    window.addToCart = addToCart;
-    window.removeFromCart = removeFromCart;
-    window.updateCartItemQuantity = updateCartItemQuantity;
-    window.editProduct = editProduct;
-    window.deleteProduct = deleteProduct;
-    window.toggleProductFeatured = toggleProductFeatured;
-}
-
-async function initializeAppUI() {
-    try {
-        UI.loginSection?.classList.add('hidden');
-        UI.mainAppSection?.classList.remove('hidden');
-
-        // Atualizar UI do usuário
-        if (state.user && UI.userProfileName && UI.userProfilePic) {
-            UI.userProfileName.textContent = state.user.fullName.split(' ')[0];
-            UI.userProfilePic.src = state.user.profilePicture || 'https://placehold.co/100x100';
-        }
-
-        // 1️⃣ Carregar produtos antes da navegação
-        listenToProducts();
-
-        // Resetar o histórico corretamente
-        state.navigationHistory = [];
-
-        // 3️⃣ Agora sim ir para home
-        navigateToScreen('home');
-
-        updateCartUI();
-        updateAdminVisibility();
-
-    } catch (error) {
-        console.error('Erro ao inicializar a interface:', error);
-        showNotification('Erro ao inicializar a aplicação.', 'error');
-    }
-}
-
-function initializeApp() {
-    if (!window.db) {
-        console.error("Firebase não inicializado.");
-        document.body.innerHTML = "<h1 class='text-center text-red-500 p-8'>Erro Crítico: A conexão com o banco de dados falhou.</h1>";
-        return;
-    }
-
-    if (!verifyDOMStructure()) {
-        console.error('Inicialização abortada devido a elementos faltantes.');
-        showNotification('Erro de estrutura da página. Recarregue a página.', 'error');
-        return;
-    }
-
-    initializeTheme();
-    setLanguage(state.currentLanguage);
-    setupEventListeners();
-
-    if (state.user) {
-        initializeAppUI();
-    } else {
-        UI.loginSection?.classList.remove('hidden');
-        UI.mainAppSection?.classList.add('hidden');
-        state.navigationHistory = [];
-        UI.backButton?.classList.add('hidden');
-    }
-}
-
-document.addEventListener('DOMContentLoaded', initializeApp);
-
-// ====================================================================
-// Sistema OTA de Atualização - Nó&Laço
-// ====================================================================
-
-// Versão atual da aplicação
-const APP_VERSION = "1.0.0";
-
-// URL REAL do version.json hospedado no GitHub Pages
-const VERSION_URL = "https://dennybonga99-hub.github.io/noelaco/version.json";
-
-async function checkForAppUpdate() {
-    // Ignora verificação no localhost (ambiente de desenvolvimento)
-    const isLocalhost =
-        window.location.hostname.includes("127.0.0.1") ||
-        window.location.hostname.includes("localhost");
-
-    if (isLocalhost) {
-        console.log("Modo local: verificação de versão ignorada.");
-        return;
-    }
-
-    try {
-        const response = await fetch(VERSION_URL, { cache: "no-store" });
-
-        // Caso a URL não exista
-        if (!response.ok) {
-            console.warn("Arquivo version.json não encontrado no servidor.");
-            return;
-        }
-
-        const data = await response.json();
-
-        if (!data.version) {
-            console.warn("version.json inválido ou incompleto.");
-            return;
-        }
-
-        if (data.version !== APP_VERSION) {
-            showUpdatePopup(data.version, data.changes, data.forceUpdate);
-        }
-
-    } catch (error) {
-        console.warn("Falha ao verificar atualização OTA:", error.message);
-    }
-}
-
-function showUpdatePopup(newVersion, changes, forceUpdate = false) {
-    const popup = document.createElement("div");
-    popup.id = "update-popup";
-    popup.style = `
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.6);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 999999;
-    `;
-
-    popup.innerHTML = `
-        <div style="
-            background: white;
-            padding: 25px;
-            width: 85%;
-            max-width: 380px;
-            border-radius: 20px;
-            text-align: center;
-            font-family: Arial;
-        ">
-            <h2 style="font-size: 22px; margin-bottom: 10px; color: #1a1a1a;">
-                Atualização Disponível
-            </h2>
-
-            <p style="font-size: 16px; margin-bottom: 15px;">
-                Nova versão disponível: <b>${newVersion}</b>
-            </p>
-
-            <p style="font-size: 14px; margin-bottom: 15px; color: gray;">
-                ${changes || "Melhorias aplicadas."}
-            </p>
-
-            <button id="update-now-btn" style="
-                width: 100%;
-                background: #0d6efd;
-                color: white;
-                padding: 12px;
-                margin-bottom: 8px;
-                border-radius: 12px;
-                font-size: 16px;
-                border: none;
-            ">Atualizar Agora</button>
-
-            ${!forceUpdate ? `
-            <button id="update-later-btn" style="
-                width: 100%;
-                background: #ddd;
-                color: #333;
-                padding: 12px;
-                border-radius: 12px;
-                font-size: 16px;
-                border: none;
-            ">Depois</button>` : ""}
-        </div>
-    `;
-
-    document.body.appendChild(popup);
-
-    document.getElementById("update-now-btn").onclick = () => {
-        popup.remove();
-        reloadWithUpdate();
-    };
-
-    if (!forceUpdate) {
-        document.getElementById("update-later-btn").onclick = () => popup.remove();
-    }
-}
-
-function reloadWithUpdate() {
-    if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.getRegistrations().then(regs => {
-            for (let reg of regs) reg.unregister();
-            location.reload(true);
+    if (UI.searchInput) {
+        UI.searchInput.addEventListener('input', (e) => {
+            if(state.navigationHistory[state.navigationHistory.length-1] !== 'products') navigateToScreen('products');
+            state.searchTerm = e.target.value;
+            renderProducts(); 
         });
+    }
+    if (UI.backButton) UI.backButton.addEventListener('click', goBack);
+    if (UI.settingsButton) UI.settingsButton.addEventListener('click', () => navigateToScreen('settings'));
+    
+    // Fix: usar UI.userProfileContainer diretamente
+    if (UI.userProfileContainer) UI.userProfileContainer.addEventListener('click', () => navigateToScreen('profile'));
+    
+    // CART EVENTS - Usando novo helper openModal
+    if (UI.cartButton) {
+        UI.cartButton.addEventListener('click', () => { 
+            updateCartUI(); 
+            openModal('cart-modal', 'cart-panel');
+        });
+    }
+    document.getElementById('close-cart-button').addEventListener('click', () => { 
+        closeModal('cart-modal', 'cart-panel');
+    });
+
+    // MAP EVENTS
+    document.getElementById('open-map-button').addEventListener('click', () => {
+        openModal('map-modal');
+        // Inicializa o mapa apenas quando o modal for aberto para garantir renderização correta
+        setTimeout(() => {
+             initMap();
+             state.map.invalidateSize();
+        }, 100);
+    });
+    
+    document.getElementById('close-map-button').addEventListener('click', () => closeModal('map-modal'));
+    document.getElementById('map-search-btn').addEventListener('click', searchLocation);
+    document.getElementById('confirm-location-btn').addEventListener('click', () => {
+        if(state.selectedLocation) {
+            document.getElementById('delivery-address-input').value = state.selectedLocation;
+            closeModal('map-modal');
+        } else {
+            alert('Por favor, selecione um ponto no mapa.');
+        }
+    });
+
+    // Reseta coordenadas se o usuário editar o endereço manualmente (Garante consistência do link do mapa)
+    const addrInput = document.getElementById('delivery-address-input');
+    if (addrInput) {
+        addrInput.addEventListener('input', () => {
+            state.deliveryCoordinates = null;
+        });
+    }
+
+    // ORDER EVENTS - Usando novo helper openModal
+    if (UI.checkoutButton) {
+        UI.checkoutButton.addEventListener('click', () => { 
+            openModal('order-confirm-modal');
+        });
+    }
+    document.getElementById('cancel-order-button').addEventListener('click', () => { 
+        closeModal('order-confirm-modal');
+    });
+
+    document.getElementById('send-order-whatsapp-button').addEventListener('click', sendOrderViaWhatsApp);
+    
+    // ADMIN EVENTS
+    if (UI.adminButton) { 
+        UI.adminButton.addEventListener('click', () => { 
+            if(state.isAdmin) navigateToScreen('admin'); 
+            else openModal('admin-login-modal');
+        }); 
+    }
+    document.getElementById('admin-login-form')?.addEventListener('submit', handleAdminLogin);
+    document.getElementById('close-admin-modal-button')?.addEventListener('click', () => closeModal('admin-login-modal'));
+    
+    // HISTORY API (BACK BUTTON) POPSTATE EVENT
+    window.addEventListener('popstate', (event) => {
+        if (event.state && event.state.screen) {
+            navigateToScreen(event.state.screen, event.state.productId, true);
+        } else {
+            // Fallback para estado inicial
+            navigateToScreen('home', null, true);
+        }
+    });
+}
+
+function initializeAppUI() {
+    const UI = getUI();
+    UI.loginSection.classList.add('hidden');
+    UI.mainAppSection.classList.remove('hidden');
+    if (state.user) {
+        UI.userProfileName.textContent = state.user.fullName.split(' ')[0];
+        UI.userProfilePic.src = state.user.profilePicture;
+        UI.userProfilePic.onerror = function() { this.src = 'https://placehold.co/100x100?text=User'; };
+        
+        // FIX: Mostrar botão de admin para que usuários comuns possam tentar logar
+        UI.adminButton.classList.remove('hidden');
+    }
+    listenToProducts();
+    
+    // Injeta estado inicial no histórico para garantir que o primeiro "voltar" funcione
+    window.history.replaceState({ screen: 'home' }, "", "#home");
+    navigateToScreen('home', null, true); // true para não duplicar history
+    
+    updateCartUI();
+    setLanguage(state.currentLanguage);
+}
+
+function init() {
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    
+    // RACE CONDITION FIX: Garante inicialização independente da ordem de carregamento
+    if (window.firebase) {
+        runApp();
     } else {
-        location.reload(true);
+        window.addEventListener('firebase-ready', runApp);
     }
 }
 
-// Inicialização
-window.addEventListener("load", () => {
-    setTimeout(() => checkForAppUpdate(), 1500);
-});
+function runApp() {
+    window.removeEventListener('firebase-ready', runApp);
+    applyTheme(localStorage.getItem('theme') === 'dark');
+    setupEventListeners();
+    if (state.user) initializeAppUI();
+    else { const UI = getUI(); UI.loginSection.classList.remove('hidden'); UI.mainAppSection.classList.add('hidden'); }
+    
+    fetch(CONFIG.VERSION_URL).then(r=>r.json()).then(data => { if(data.version !== CONFIG.APP_VERSION && !window.location.host.includes('localhost')) { if(confirm(`Nova versão disponível: ${data.version}. Atualizar?`)) window.location.reload(true); } }).catch(console.warn);
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW falhou', err));
+    }
+}
+
+// Inicializa quando o DOM estiver pronto ou se já estiver
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}

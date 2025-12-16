@@ -1,6 +1,6 @@
-/* style.css - Versão Melhorada */
+/* style.css - Performance Optimized & Android Native Ready */
 
-/* ===== VARIÁVEIS DE COR ===== */
+/* ===== VARIÁVEIS ===== */
 :root {
     --color-primary: #f8f9fa;
     --color-secondary: #ffffff;
@@ -10,12 +10,16 @@
     --color-brand-hover: #dc2626;
     --color-border-main: #e2e8f0;
     
-    /* Novas variáveis para efeitos */
-    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+    /* Safe Area Variables (para notches e gesture bars) */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
 }
 
 .dark {
@@ -27,14 +31,44 @@
     --color-brand-hover: #dc2626;
     --color-border-main: #334155;
     
-    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
-    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
 }
 
-/* ===== MAPEAMENTO DE CLASSES ===== */
+/* ===== BASE ===== */
+html {
+    scroll-behavior: smooth;
+    /* Evita o highlight azul ao tocar em elementos no Android */
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    background-color: var(--color-primary);
+    color: var(--color-text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+    /* Bloqueia pull-to-refresh em mobile */
+    overscroll-behavior-y: none;
+    /* Sensação nativa: Impede seleção de texto geral (liberado apenas em inputs) */
+    user-select: none;
+    -webkit-user-select: none;
+    /* Ajuste fino para safe areas se o body ocupar tudo */
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
+}
+
+/* Libera seleção em inputs e textos selecionáveis */
+input, textarea, [contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+/* FIX CRÍTICO: Garante que elementos hidden fiquem realmente ocultos */
+.hidden {
+    display: none !important;
+}
+
+/* ===== UTILS ===== */
 .bg-primary { background-color: var(--color-primary); }
 .text-primary { color: var(--color-text-primary); }
 .bg-secondary { background-color: var(--color-secondary); }
@@ -44,371 +78,103 @@
 .bg-brand-primary { background-color: var(--color-brand-primary); }
 .hover\:bg-brand-hover:hover { background-color: var(--color-brand-hover); }
 
-/* ===== ANIMAÇÕES GLOBAIS ===== */
-* {
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+/* Classes utilitárias para Safe Area */
+.safe-top {
+    padding-top: var(--safe-top);
 }
 
-body {
-    scroll-behavior: smooth;
+.safe-bottom {
+    padding-bottom: var(--safe-bottom);
 }
 
-/* ===== HEADER MELHORADO ===== */
+.safe-padding-vertical {
+    padding-top: calc(1.5rem + var(--safe-top));
+    padding-bottom: calc(1.5rem + var(--safe-bottom));
+}
+
+/* Hide Scrollbar Utility */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+/* ===== ELEMENTOS ESPECÍFICOS (Performance: Transições apenas onde necessário) ===== */
+
+/* Header & Botões */
 header {
-    backdrop-filter: blur(10px);
     background-color: var(--color-secondary);
-    box-shadow: var(--shadow-md);
-    transition: all 0.3s ease;
+    transition: box-shadow 0.3s ease;
 }
 
-header:hover {
-    box-shadow: var(--shadow-lg);
+header button, .btn-transition {
+    transition: transform 0.2s, background-color 0.2s, color 0.2s;
 }
 
-/* Botões do header com efeitos */
-header button {
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-header button::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(239, 68, 68, 0.1);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
-}
-
-header button:hover::before {
-    width: 200px;
-    height: 200px;
+header button:hover {
+    transform: translateY(-2px);
 }
 
 header button:active {
     transform: scale(0.95);
 }
 
-/* Badge do carrinho com animação */
-#cart-item-count {
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.8; transform: scale(1.05); }
-}
-
-/* Foto de perfil com borda animada */
-#user-profile-pic {
-    transition: all 0.3s ease;
-    box-shadow: 0 0 0 3px transparent;
-}
-
-#user-profile-pic:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 3px var(--color-brand-primary);
-}
-
-/* ===== INPUT DE BUSCA MELHORADO ===== */
-#search-input {
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow-sm);
-}
-
-#search-input:focus {
-    box-shadow: var(--shadow-md);
-    transform: scale(1.02);
-}
-
-/* ===== HERO SECTION COM EFEITOS ===== */
-#home-screen .bg-brand-primary {
-    position: relative;
-    overflow: hidden;
-    box-shadow: var(--shadow-2xl);
-    transition: all 0.4s ease;
-}
-
-#home-screen .bg-brand-primary:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 30px 60px -15px rgba(239, 68, 68, 0.3);
-}
-
-#home-screen .bg-brand-primary::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(
-        45deg,
-        transparent 30%,
-        rgba(255, 255, 255, 0.1) 50%,
-        transparent 70%
-    );
-    animation: shine 6s infinite;
-}
-
-@keyframes shine {
-    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
-}
-
-/* Botão do Hero com efeito glassmorphism */
-#view-all-products-button {
-    position: relative;
-    backdrop-filter: blur(10px);
-    box-shadow: var(--shadow-lg);
-    overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-#view-all-products-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-    transition: left 0.5s;
-}
-
-#view-all-products-button:hover::before {
-    left: 100%;
-}
-
-#view-all-products-button:hover {
-    transform: scale(1.05) translateY(-2px);
-    box-shadow: var(--shadow-xl);
-}
-
-#view-all-products-button:active {
-    transform: scale(0.98);
-}
-
-/* ===== CARDS DE PRODUTO MELHORADOS ===== */
-.product-card {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: var(--shadow-md);
-    position: relative;
-    overflow: hidden;
-}
-
-.product-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--color-brand-primary), var(--color-brand-hover));
-    transform: scaleX(0);
-    transition: transform 0.3s ease;
-}
-
-.product-card:hover::before {
-    transform: scaleX(1);
-}
-
-.product-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: var(--shadow-2xl);
-}
-
-.product-card img {
-    transition: all 0.4s ease;
-}
-
-.product-card:hover img {
-    transform: scale(1.1);
-}
-
-/* ===== BOTÕES GERAIS MELHORADOS ===== */
-button {
-    position: relative;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-button:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-}
-
-button:active {
-    transform: translateY(0);
-    box-shadow: var(--shadow-sm);
-}
-
-/* Efeito ripple nos botões */
-button::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
-}
-
-button:active::after {
-    width: 300px;
-    height: 300px;
-}
-
-/* ===== INPUTS MELHORADOS ===== */
+/* Inputs */
 input, select, textarea {
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow-sm);
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 input:focus, select:focus, textarea:focus {
-    box-shadow: var(--shadow-md), 0 0 0 3px rgba(239, 68, 68, 0.1);
-    transform: translateY(-1px);
-}
-
-input:hover, select:hover, textarea:hover {
+    outline: none;
     border-color: var(--color-brand-primary);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
 }
 
-/* ===== MODAIS COM ANIMAÇÃO ===== */
-#cart-modal, #order-confirm-modal, #admin-login-modal {
-    backdrop-filter: blur(8px);
+/* Cards de Produto */
+.product-card {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
 }
 
-#cart-panel {
-    transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+.product-card:hover {
+    transform: translateY(-5px);
     box-shadow: var(--shadow-2xl);
 }
 
-#cart-modal.show #cart-panel {
-    animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+/* Badge de Carrinho */
+#cart-item-count {
+    animation: pulse 2s infinite;
 }
 
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+@keyframes pulse {
+    0%, 100% { transform: translate(50%, -50%) scale(1); }
+    50% { transform: translate(50%, -50%) scale(1.1); }
 }
 
-/* ===== CART ITEMS ANIMADOS ===== */
-.cart-item {
-    animation: fadeInUp 0.4s ease;
-    transition: all 0.3s ease;
+/* ===== CAROUSEL ===== */
+.carousel-wrapper {
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
 }
 
-.cart-item:hover {
-    transform: translateX(-5px);
-    box-shadow: var(--shadow-md);
+/* ===== MODAIS ===== */
+#cart-panel {
+    transition: transform 0.3s ease-in-out;
 }
 
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.screen {
+    animation: fadeIn 0.4s ease-out forwards;
 }
 
-/* ===== LOADING SPINNER MELHORADO ===== */
-#loading-modal {
-    backdrop-filter: blur(10px);
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-#loading-modal .flex {
-    animation: scaleIn 0.3s ease;
-}
-
-@keyframes scaleIn {
-    from {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-/* ===== NOTIFICAÇÕES TOAST ===== */
-#notification-message {
-    animation: slideInFromRight 0.4s ease;
-    box-shadow: var(--shadow-xl);
-}
-
-@keyframes slideInFromRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-/* ===== TOGGLE SWITCH DO TEMA ===== */
-#theme-toggle {
-    transition: all 0.3s ease;
-}
-
-#theme-toggle span {
-    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-#theme-toggle:hover {
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
-}
-
-/* ===== TABELAS ADMIN MELHORADAS ===== */
-table {
-    border-collapse: separate;
-    border-spacing: 0;
-    overflow: hidden;
-    box-shadow: var(--shadow-md);
-    border-radius: 12px;
-}
-
-tbody tr {
-    transition: all 0.3s ease;
-}
-
-tbody tr:hover {
-    background-color: rgba(239, 68, 68, 0.05);
-    transform: scale(1.01);
-}
-
-/* ===== IMAGENS COM EFEITO ===== */
-img {
-    transition: all 0.3s ease;
-}
-
-img:hover {
-    filter: brightness(1.05);
-}
-
-/* ===== SCROLLBAR CUSTOMIZADA ===== */
+/* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -416,128 +182,44 @@ img:hover {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--color-brand-primary);
-    border-radius: 5px;
-    transition: background 0.3s ease;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: var(--color-brand-hover);
-}
-
-/* ===== ANIMAÇÃO DE ENTRADA PARA SEÇÕES ===== */
-.screen {
-    animation: fadeIn 0.5s ease;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* ===== EFEITO DE FOCO VISÍVEL ===== */
-*:focus-visible {
-    outline: 3px solid var(--color-brand-primary);
-    outline-offset: 2px;
+    background: #cbd5e1;
     border-radius: 4px;
 }
 
-/* ===== RESPONSIVIDADE APRIMORADA ===== */
-@media (max-width: 768px) {
-    #cart-panel {
-        width: 100%;
-    }
-    
-    .product-card:hover {
-        transform: translateY(-4px) scale(1.01);
-    }
+.dark ::-webkit-scrollbar-thumb {
+    background: #475569;
 }
 
-/* ===== PERFIL DE USUÁRIO COM EFEITO ===== */
-#profile-pic-large {
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow-lg);
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-brand-primary);
 }
 
-#profile-pic-large:hover {
-    transform: scale(1.1) rotate(5deg);
-    box-shadow: var(--shadow-2xl);
+/* ===== FOCUS ACCESSIBILITY ===== */
+*:focus-visible {
+    outline: 2px solid var(--color-brand-primary);
+    outline-offset: 2px;
 }
 
-/* ===== FORMULÁRIOS MELHORADOS ===== */
-form {
-    position: relative;
+/* ===== TABLES (ADMIN) ===== */
+tr {
+    transition: background-color 0.15s;
 }
 
-form button[type="submit"] {
-    position: relative;
-    overflow: hidden;
+/* ===== ORDER HISTORY BADGES ===== */
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
 }
+.status-pending { background-color: #fef08a; color: #854d0e; }
+.status-completed { background-color: #bbf7d0; color: #166534; }
+.status-cancelled { background-color: #fecaca; color: #991b1b; }
 
-form button[type="submit"]::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
+.order-card {
+    transition: transform 0.2s;
 }
-
-form button[type="submit"]:hover::before {
-    width: 400px;
-    height: 400px;
-}
-
-/* ===== FEATURED PRODUCTS DESTAQUE ===== */
-#featured-products-container .product-card {
-    border: 2px solid transparent;
-}
-
-#featured-products-container .product-card:hover {
-    border-color: var(--color-brand-primary);
-}
-
-/* ===== UPLOAD DE FOTO DE PERFIL ===== */
-#profile-picture-upload-area {
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow-md);
-}
-
-#profile-picture-upload-area:hover {
-    transform: scale(1.05);
-    border-color: var(--color-brand-primary);
-    box-shadow: var(--shadow-xl), 0 0 20px rgba(239, 68, 68, 0.2);
-}
-
-/* ===== ENDEREÇOS SALVOS ===== */
-#saved-addresses-container > div {
-    transition: all 0.3s ease;
-    padding: 12px;
-    border-radius: 8px;
-}
-
-#saved-addresses-container > div:hover {
-    background-color: rgba(239, 68, 68, 0.05);
-    transform: translateX(5px);
-}
-
-/* ===== BOTÃO DE VOLTAR ===== */
-#back-button {
-    backdrop-filter: blur(10px);
-    border-radius: 50%;
-    padding: 8px;
-}
-
-#back-button:hover {
-    background-color: rgba(239, 68, 68, 0.1);
+.order-card:hover {
+    transform: scale(1.01);
 }
