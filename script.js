@@ -1,25 +1,3 @@
-// ====================================================================
-// Nó&Laço - script.js (Production Ready & Bug Fixed)
-// ====================================================================
-
-// ====================================================================
-// CONFIGURAÇÃO
-// ====================================================================
-const CONFIG = {
-    CLOUDINARY_CLOUD_NAME: 'ddjpvbggk',
-    CLOUDINARY_UPLOAD_PRESET: 'nodelaco_preset',
-    ADMIN_WHATSAPP_NUMBERS: [
-        '258873319854',   // Admin principal
-        '258878384914'    // Admin secundário
-    ],
-    ADMIN_WHATSAPP_NUMBER: '258873319854',
-    CURRENCY_SYMBOL: 'MZN',
-    VALID_MZ_PREFIXES: ['82', '83', '84', '85', '86', '87'],
-    ADMIN_HASH: 'MTIzNDU2', 
-    VERSION_URL: "https://dennybonga99-hub.github.io/noelaco/version.json",
-    APP_VERSION: "1.0.2"
-};
-
 const state = {
     user: JSON.parse(localStorage.getItem('currentUser')) || null,
     get isAdmin() {
