@@ -319,28 +319,7 @@
             getStorage, ref, uploadBytes, getDownloadURL
         };
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyC50VFvoKfqgPFU9KBorRlyQ7K-3MrL7YA",
-            authDomain: "no-e-laco.firebaseapp.com",
-            databaseURL: "https://no-e-laco-default-rtdb.firebaseio.com",
-            projectId: "no-e-laco",
-            storageBucket: "no-e-laco.appspot.com",
-            messagingSenderId: "591421957305",
-            appId: "1:591421957305:web:eed983637ce202c5b62768",
-            measurementId: "G-EK61EY3ZTN"
-        };
 
-        try {
-            const app = initializeApp(firebaseConfig);
-            window.db = getFirestore(app);
-            window.storage = getStorage(app);
-            
-            // Dispatch event when Firebase is ready
-            window.dispatchEvent(new Event('firebase-ready'));
-        } catch (e) {
-            console.error("Erro ao inicializar Firebase:", e);
-        }
-    </script>
 
     <!-- Main App Script -->
     <script src="script.js" defer></script>
